@@ -7,7 +7,7 @@ OBJS = 						\
 	$K/main.o
 
 # 设置交叉编译工具链
-TOOLPREFIX := riscv64-linux-gnu-
+TOOLPREFIX := riscv64-unknown-elf-
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
@@ -29,13 +29,13 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 LDFLAGS = -z max-page-size=4096
 
 # QEMU 启动选项
-QEMUOPTS = -machine virt -bios default -device loader,file=Image,addr=0x80200000 --nographic
+QEMUOPTS = -machine virt -bios default -kernel Image -nographic
 
 all: Image
 
 Image: Kernel
 
-Kernel: $(subst .c,.o,$(wildcard $K/*.c)) $(subst .S,.o,$(wildcard $K/*.S))
+Kernel: $(subst .c,.o,$(wildcard $K/*.c)) $(subst .S,.o,$(wildcard $K/*.S)) $K/*.h $K/*.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
 	$(OBJCOPY) $K/Kernel -O binary Image
 
