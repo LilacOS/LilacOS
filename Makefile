@@ -8,7 +8,7 @@ OBJS = 						\
 	$K/main.o
 
 # 设置交叉编译工具链
-TOOLPREFIX := riscv64-linux-gnu-
+TOOLPREFIX := riscv64-unknown-elf-
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
@@ -19,7 +19,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 QEMU = qemu-system-riscv64
 
 # gcc 编译选项
-CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb
+CFLAGS = -Wall -Werror -fno-omit-frame-pointer -ggdb
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
@@ -30,7 +30,7 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 LDFLAGS = -z max-page-size=4096
 
 # QEMU 启动选项
-QEMUOPTS = -machine virt -bios default -device loader,file=Image,addr=0x80200000 --nographic
+QEMUOPTS = -machine virt -bios default -kernel Image --nographic
 
 all: Image
 

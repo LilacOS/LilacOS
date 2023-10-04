@@ -1,1 +1,6 @@
 .vscode
+kernel/*.d
+kernel/*.o
+kernel/Kernel
+Image
+.gdb_history
