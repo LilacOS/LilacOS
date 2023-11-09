@@ -4,16 +4,16 @@
 #include "types.h"
 
 /*  sbi.c    */
-void consolePutchar(usize c);
-usize consoleGetchar();
+void console_putchar(usize c);
+usize console_getchar();
 void shutdown() __attribute__((noreturn));
-void setTimer(usize time);
+void set_timer(usize time);
 
 /* printf.c */
 void printf(char *, ...);
 void panic(char*) __attribute__((noreturn));
 
 /*  interrupt.c */
-void initInterrupt();
+void init_interrupt();
 
 #endif

@@ -15,7 +15,7 @@ main()
         *bss_mem = 0;
     }
 
-    initInterrupt();
+    init_interrupt();
     asm volatile("ebreak":::);
     printf("Return here!\n");
 }

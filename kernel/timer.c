@@ -2,35 +2,24 @@
 #include "def.h"
 #include "riscv.h"
 
-static const usize INTERVAL = 100000;
-static usize TICKS = 0;
+static const usize CLOCK_FREQ = 10000000;
+// 每10ms触发一次时钟中断
+static const usize TICKS_PER_SEC = 100;
 
-void setTimeout();
+void set_next_timeout();
 
 void
-initTimer()
+init_timer()
 {
     // 时钟中断使能
     w_sie(r_sie() | SIE_STIE);
-    // 监管者模式中断使能
-    w_sstatus(r_sstatus() | SSTATUS_SIE);
     // 设置第一次时钟中断
-    setTimeout();
+    set_next_timeout();
 }
 
 void
-setTimeout()
+set_next_timeout()
 {
     // 设置下一次时钟时间为当前时间 + INTERVAL
-    setTimer(r_time() + INTERVAL);
-}
-
-void
-tick()
-{
-    setTimeout();
-    TICKS += 1;
-    if(TICKS % 100 == 0) {
-        printf("** %d ticks **\n", TICKS);
-    }
+    set_timer(r_time() + CLOCK_FREQ / TICKS_PER_SEC);
 }

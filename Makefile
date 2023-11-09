@@ -19,7 +19,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 QEMU = qemu-system-riscv64
 
 # gcc 编译选项
-CFLAGS = -Wall -Werror -fno-omit-frame-pointer -ggdb
+CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -g
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
@@ -35,10 +35,10 @@ QEMUOPTS = -machine virt -bios default -kernel Image --nographic
 all: Image
 
 Image: Kernel
+	$(OBJCOPY) $K/Kernel -O binary Image
 
 Kernel: $(subst .c,.o,$(wildcard $K/*.c))
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
-	$(OBJCOPY) $K/Kernel -O binary Image
 
 # compile all .c file to .o file
 $K/%.o: $K/%.c
@@ -52,3 +52,9 @@ asm: Kernel
 
 qemu: Image
 	$(QEMU) $(QEMUOPTS)
+
+gdbserver: Image
+	$(QEMU) $(QEMUOPTS) -s -S
+
+gdbclient:
+	$(TOOLPREFIX)gdb -ex 'file $K/Kernel' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'

@@ -27,16 +27,18 @@ SECTIONS
     .data : {
         sdata = .;
         *(.data .data.*)
+        . = ALIGN(4K);
         edata = .;
     }
 
     .stack : {
         *(.stack)
+        . = ALIGN(4K);
     }
 
     .bss : {
         sbss = .;
-        *(.bss .bss.*)
+        *(.sbss .bss .bss.*)
         . = ALIGN(4K);
         ebss = .;
     }

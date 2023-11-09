@@ -7,13 +7,15 @@
 asm(".include \"kernel/interrupt.asm\"");
 
 void
-initInterrupt()
+init_interrupt()
 {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
     extern void __interrupt();
     w_stvec((usize)__interrupt | MODE_DIRECT);
     // 初始化时钟中断
-    extern void initTimer(); initTimer();
+    extern void init_timer(); init_timer();
+    // 监管者模式中断使能
+    w_sstatus(r_sstatus() | SSTATUS_SIE);
     printf("***** Init Interrupt *****\n");
 }
 
@@ -26,10 +28,11 @@ breakpoint(Context *context)
 }
 
 void
-supervisorTimer(Context *context)
+supervisor_timer(Context *context)
 {
-    extern void tick();
-    tick();
+    extern void set_next_timeout();
+    printf("timer interrupt\n");
+    set_next_timeout();
 }
 
 void
@@ -44,7 +47,7 @@ fault(Context *context, usize scause, usize stval)
 }
 
 void
-handleInterrupt(Context *context, usize scause, usize stval)
+handle_interrupt(Context *context, usize scause, usize stval)
 {
     switch (scause)
     {
@@ -52,7 +55,7 @@ handleInterrupt(Context *context, usize scause, usize stval)
         breakpoint(context);
         break;
     case SUPERVISOR_TIMER:
-        supervisorTimer(context);
+        supervisor_timer(context);
         break;
     default:
         fault(context, scause, stval);
