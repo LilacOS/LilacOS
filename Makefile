@@ -5,6 +5,8 @@ OBJS = 						\
 	$K/printf.o				\
 	$K/interrupt.o			\
 	$K/timer.o				\
+	$K/heap.o				\
+	$K/memory.o				\
 	$K/main.o
 
 # 设置交叉编译工具链
@@ -39,7 +41,7 @@ Image: Kernel
 
 Kernel: $(subst .c,.o,$(wildcard $K/*.c))
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
-
+	
 # compile all .c file to .o file
 $K/%.o: $K/%.c
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -7,7 +7,7 @@ SECTIONS
 {
     /* "." 是当前地址 */
     . = BASE_ADDRESS;
-    start = .;
+    skernel = .;
 
     .text : {
         stext = .;
@@ -43,5 +43,5 @@ SECTIONS
         ebss = .;
     }
 
-    PROVIDE(end = .);
+    PROVIDE(ekernel = .);
 }

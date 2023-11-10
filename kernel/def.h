@@ -16,4 +16,12 @@ void panic(char*) __attribute__((noreturn));
 /*  interrupt.c */
 void init_interrupt();
 
+/*  heap.c  */
+void *malloc(uint32 size);
+void free(void *ptr);
+
+/*  memory.c    */
+usize allocFrame();
+void deallocFrame(usize ppn);
+
 #endif
