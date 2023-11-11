@@ -1,8 +1,6 @@
 #include "types.h"
 #include "def.h"
 
-asm(".include \"kernel/entry.asm\"");
-
 extern void sbss();
 extern void ebss();
 
@@ -38,7 +36,7 @@ void test_alloc()
     {
         dealloc(blocks[j], 30);
     }
-    // printf("Buddy test successfully\n");
+    printf("Buddy test successfully\n");
 }
 
 void main()
@@ -50,7 +48,7 @@ void main()
         *bss_mem = 0;
     }
 
-    init_interrupt();
+    init_trap();
     init_memory();
     test_alloc();
     shutdown();

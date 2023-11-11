@@ -24,11 +24,11 @@
 
 
     .section .text
-    .globl __interrupt
+    .globl __trap_entry
     # 中断处理函数需要 4 字节对齐
     .balign 4
-# 全局中断处理，保存 Context 并跳转到 handle_interrupt() 处
-__interrupt:
+# 全局中断处理，保存 Context 并跳转到 trap_handle() 处
+__trap_entry:
     # 移动栈指针，留出 Context 的空间
     addi    sp, sp, -34*REG_SIZE
     
@@ -50,16 +50,16 @@ __interrupt:
     SAVE    s1, 32
     SAVE    s2, 33
 
-    # 调用 handle_interrupt()
+    # 调用 trap_handle()
     # 将 Context 的地址(栈顶)和 scause、stval 作为参数传入
     mv      a0, sp
     csrr    a1, scause
     csrr    a2, stval
-    jal     handle_interrupt
+    jal     trap_handle
 
 
     .globl __restore
-# 从 handle_interrupt 返回
+# 从 trap_handle 返回
 # 从 Context 中恢复所有寄存器，并跳转至 Context 中 sepc 的位置
 __restore:
     # 恢复 CSR

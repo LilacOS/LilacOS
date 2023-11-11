@@ -1,9 +1,11 @@
 K=kernel
 
 OBJS = 								\
+	$K/entry.o						\
+	$K/kerneltrap.o					\
 	$K/sbi.o						\
 	$K/printf.o						\
-	$K/interrupt.o					\
+	$K/trap.o						\
 	$K/timer.o						\
 	$K/buddy_system_allocator.o		\
 	$K/memory.o						\
@@ -45,6 +47,9 @@ Kernel: $(OBJS)
 # compile all .c file to .o file
 $K/%.o: $K/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$K/%.o: $K/%.S
+	$(CC) -c $< -o $@
 
 clean:
 	rm -f */*.d */*.o $K/Kernel Image Image.asm

@@ -8,8 +8,7 @@ static const usize TICKS_PER_SEC = 100;
 
 void set_next_timeout();
 
-void
-init_timer()
+void init_timer()
 {
     // 时钟中断使能
     w_sie(r_sie() | SIE_STIE);
@@ -17,8 +16,7 @@ init_timer()
     set_next_timeout();
 }
 
-void
-set_next_timeout()
+void set_next_timeout()
 {
     // 设置下一次时钟时间为当前时间 + INTERVAL
     set_timer(r_time() + CLOCK_FREQ / TICKS_PER_SEC);

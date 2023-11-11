@@ -13,8 +13,8 @@ void set_timer(usize time);
 void printf(char *, ...);
 void panic(char *) __attribute__((noreturn));
 
-/*  interrupt.c */
-void init_interrupt();
+/*  trap.c */
+void init_trap();
 
 /*  memory.c    */
 void init_memory();
