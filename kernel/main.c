@@ -6,16 +6,39 @@ asm(".include \"kernel/entry.asm\"");
 extern void sbss();
 extern void ebss();
 
-void testAlloc()
+void test_alloc()
 {
-    printf("alloc %p\n", allocFrame());
-    usize f = allocFrame();
-    printf("alloc %p\n", f);
-    printf("alloc %p\n", allocFrame());
-    printf("dealloc %p\n", f);
-    deallocFrame(f);
-    printf("alloc %p\n", allocFrame());
-    printf("alloc %p\n", allocFrame());
+    void *blocks[10];
+    printf("Buddy test\n");
+    int i = 0;
+    printf("step0\n");
+    for (int j = 0; j < 10; ++j)
+    {
+        blocks[i++] = alloc(30);
+        printf("%p\n", blocks[i - 1]);
+    }
+
+    printf("step1\n");
+    dealloc(blocks[--i], 64);
+    blocks[i++] = alloc(64);
+    printf("%p\n", blocks[i - 1]);
+
+    printf("step2\n");
+    i = 0;
+    for (int j = 0; j < 10; ++j)
+    {
+        dealloc(blocks[j], 30);
+    }
+    for (int j = 0; j < 10; ++j)
+    {
+        blocks[i++] = alloc(64);
+        printf("%p\n", blocks[i - 1]);
+    }
+    for (int j = 0; j < 10; ++j)
+    {
+        dealloc(blocks[j], 30);
+    }
+    // printf("Buddy test successfully\n");
 }
 
 void main()
@@ -28,8 +51,7 @@ void main()
     }
 
     init_interrupt();
-    extern void initMemory();
-    initMemory();
-    testAlloc();
+    init_memory();
+    test_alloc();
     shutdown();
 }

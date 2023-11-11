@@ -11,17 +11,16 @@ void set_timer(usize time);
 
 /* printf.c */
 void printf(char *, ...);
-void panic(char*) __attribute__((noreturn));
+void panic(char *) __attribute__((noreturn));
 
 /*  interrupt.c */
 void init_interrupt();
 
-/*  heap.c  */
-void *malloc(uint32 size);
-void free(void *ptr);
-
 /*  memory.c    */
-usize allocFrame();
-void deallocFrame(usize ppn);
+void init_memory();
+void *alloc(usize size);
+void dealloc(void *block, usize size);
+usize alloc_frame();
+void dealloc_frame(usize ppn);
 
 #endif
