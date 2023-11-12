@@ -34,7 +34,7 @@ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 &
 LDFLAGS = -z max-page-size=4096
 
 # QEMU 启动选项
-QEMUOPTS = -machine virt -bios default -kernel Image --nographic
+QEMUOPTS = -machine virt -m 128M -bios default -kernel Image --nographic
 
 all: Image
 

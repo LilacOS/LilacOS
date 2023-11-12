@@ -16,8 +16,10 @@ void init_timer()
     set_next_timeout();
 }
 
+/**
+ * 设置下一次时钟
+ */
 void set_next_timeout()
 {
-    // 设置下一次时钟时间为当前时间 + INTERVAL
     set_timer(r_time() + CLOCK_FREQ / TICKS_PER_SEC);
 }

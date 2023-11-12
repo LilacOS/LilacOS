@@ -10,8 +10,8 @@ struct Buddy
 };
 void init_buddy(struct Buddy *buddy);
 void add_to_buddy(struct Buddy *buddy, void *start, void *end);
-void *buddy_alloc(struct Buddy *buddy, uint64 num);
-void buddy_dealloc(struct Buddy *buddy, void *block, uint64 num);
+void *buddy_alloc(struct Buddy *buddy, uint64 size);
+void buddy_dealloc(struct Buddy *buddy, void *block, uint64 size);
 
 uint64 next_power_of_two(uint64 size);
 uint64 prev_power_of_two(uint64 size);

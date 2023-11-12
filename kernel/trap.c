@@ -17,20 +17,20 @@ void init_trap()
     printf("***** Init Trap *****\n");
 }
 
-void breakpoint(Context *context)
+void breakpoint(TrapContext *context)
 {
     printf("Breakpoint at %p\n", context->sepc);
     // ebreak 指令长度 2 字节，返回后跳过该条指令
     context->sepc += 2;
 }
 
-void supervisor_timer(Context *context)
+void supervisor_timer(TrapContext *context)
 {
     extern void set_next_timeout();
     set_next_timeout();
 }
 
-void fault(Context *context, usize scause, usize stval)
+void fault(TrapContext *context, usize scause, usize stval)
 {
     printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n",
            scause,
@@ -39,7 +39,7 @@ void fault(Context *context, usize scause, usize stval)
     panic("");
 }
 
-void trap_handle(Context *context, usize scause, usize stval)
+void trap_handle(TrapContext *context, usize scause, usize stval)
 {
     switch (scause)
     {
