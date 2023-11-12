@@ -9,6 +9,7 @@ OBJS = 								\
 	$K/timer.o						\
 	$K/buddy_system_allocator.o		\
 	$K/memory.o						\
+	$K/mapping.o					\
 	$K/main.o
 
 # 设置交叉编译工具链

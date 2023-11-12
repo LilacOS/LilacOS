@@ -1,8 +1,6 @@
 #include "types.h"
 #include "def.h"
-
-extern void sbss();
-extern void ebss();
+#include "consts.h"
 
 void test_alloc()
 {
@@ -51,5 +49,6 @@ void main()
     init_trap();
     init_memory();
     test_alloc();
+    map_kernel();
     shutdown();
 }

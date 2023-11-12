@@ -1,13 +1,15 @@
 #include "def.h"
-#include "memory.h"
+#include "consts.h"
 #include "buddy_system_allocator.h"
+#include "mapping.h"
 
 static struct Buddy allocator;
 
 void init_allocator()
 {
     init_buddy(&allocator);
-    add_to_buddy(&allocator, (void *)ekernel, (void *)MEMORY_END);
+    // todo();
+    add_to_buddy(&allocator, (void *)ekernel, (void *)(MEMORY_END + KERNEL_MAP_OFFSET));
 }
 
 /**
@@ -44,7 +46,7 @@ usize alloc_frame()
     {
         page[i] = 0;
     }
-    return ((usize)page) >> 12;
+    return __pa((usize)page) >> 12;
 }
 
 /**
@@ -54,7 +56,7 @@ usize alloc_frame()
  */
 void dealloc_frame(usize ppn)
 {
-    dealloc((void *)(ppn << 12), PAGE_SIZE);
+    dealloc((void *)__va(ppn << 12), PAGE_SIZE);
 }
 
 void init_memory()

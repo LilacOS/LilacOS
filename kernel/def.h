@@ -23,4 +23,7 @@ void dealloc(void *block, usize size);
 usize alloc_frame();
 void dealloc_frame(usize ppn);
 
+/* mapping.c */
+void map_kernel();
+
 #endif

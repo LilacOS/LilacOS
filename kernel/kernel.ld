@@ -1,7 +1,7 @@
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 
-BASE_ADDRESS = 0x80200000;
+BASE_ADDRESS = 0xffffffff80200000;
 
 SECTIONS
 {
@@ -31,12 +31,9 @@ SECTIONS
         edata = .;
     }
 
-    .stack : {
-        *(.stack)
-        . = ALIGN(4K);
-    }
-
     .bss : {
+        sbss_with_stack = .;
+        *(.bss.stack)
         sbss = .;
         *(.sbss .bss .bss.*)
         . = ALIGN(4K);
