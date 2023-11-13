@@ -4,8 +4,7 @@
 
 static char digits[] = "0123456789abcdef";
 
-static void
-printint(int xx, int base, int sign)
+static void printint(int xx, int base, int sign)
 {
     char buf[16];
     int i;
@@ -29,8 +28,7 @@ printint(int xx, int base, int sign)
         console_putchar(buf[i]);
 }
 
-static void
-printptr(usize x)
+static void printptr(usize x)
 {
     int i;
     console_putchar('0');
@@ -49,37 +47,40 @@ void printf(char *fmt, ...)
         panic("null fmt");
 
     va_start(ap, fmt);
-    for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
-        if (c != '%') {
+    for (i = 0; (c = fmt[i] & 0xff) != 0; i++)
+    {
+        if (c != '%')
+        {
             console_putchar(c);
             continue;
         }
         c = fmt[++i] & 0xff;
         if (c == 0)
             break;
-        switch (c) {
-            case 'd':
-                printint(va_arg(ap, int), 10, 1);
-                break;
-            case 'x':
-                printint(va_arg(ap, int), 16, 1);
-                break;
-            case 'p':
-                printptr(va_arg(ap, usize));
-                break;
-            case 's':
-                if ((s = va_arg(ap, char *)) == 0)
-                    s = "(null)";
-                for (; *s; s++)
-                    console_putchar(*s);
-                break;
-            case '%':
-                console_putchar('%');
-                break;
-            default:
-                console_putchar('%');
-                console_putchar(c);
-                break;
+        switch (c)
+        {
+        case 'd':
+            printint(va_arg(ap, int), 10, 1);
+            break;
+        case 'x':
+            printint(va_arg(ap, int), 16, 1);
+            break;
+        case 'p':
+            printptr(va_arg(ap, usize));
+            break;
+        case 's':
+            if ((s = va_arg(ap, char *)) == 0)
+                s = "(null)";
+            for (; *s; s++)
+                console_putchar(*s);
+            break;
+        case '%':
+            console_putchar('%');
+            break;
+        default:
+            console_putchar('%');
+            console_putchar(c);
+            break;
         }
     }
 }

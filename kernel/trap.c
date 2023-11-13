@@ -2,52 +2,44 @@
 #include "context.h"
 #include "def.h"
 #include "riscv.h"
-#include "interrupt.h"
+#include "trap.h"
 
-asm(".include \"kernel/interrupt.asm\"");
-
-void
-init_interrupt()
+void init_trap()
 {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
-    extern void __interrupt();
-    w_stvec((usize)__interrupt | MODE_DIRECT);
+    extern void __trap_entry();
+    w_stvec((usize)__trap_entry | MODE_DIRECT);
     // 初始化时钟中断
-    extern void init_timer(); init_timer();
+    extern void init_timer();
+    init_timer();
     // 监管者模式中断使能
     w_sstatus(r_sstatus() | SSTATUS_SIE);
-    printf("***** Init Interrupt *****\n");
+    printf("***** Init Trap *****\n");
 }
 
-void
-breakpoint(Context *context)
+void breakpoint(TrapContext *context)
 {
     printf("Breakpoint at %p\n", context->sepc);
     // ebreak 指令长度 2 字节，返回后跳过该条指令
     context->sepc += 2;
 }
 
-void
-supervisor_timer(Context *context)
+void supervisor_timer(TrapContext *context)
 {
     extern void set_next_timeout();
-    printf("timer interrupt\n");
     set_next_timeout();
 }
 
-void
-fault(Context *context, usize scause, usize stval)
+void fault(TrapContext *context, usize scause, usize stval)
 {
-    printf("Unhandled interrupt!\nscause\t= %psepc\t= %p\nstval\t= %p\n",
-        scause,
-        context->sepc,
-        stval
-    );
+    printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n",
+           scause,
+           context->sepc,
+           stval);
     panic("");
 }
 
-void
-handle_interrupt(Context *context, usize scause, usize stval)
+void trap_handle(TrapContext *context, usize scause, usize stval)
 {
     switch (scause)
     {
