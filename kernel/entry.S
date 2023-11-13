@@ -5,7 +5,7 @@ _start:
     la sp, bootstacktop
     call main
 
-    .section .stack
+    .section .bss.stack
     .align 12
     # 以下 4096 × 16 字节的空间作为 OS 的启动栈
     .global bootstack

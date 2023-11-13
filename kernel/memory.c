@@ -1,5 +1,5 @@
 #include "def.h"
-#include "memory.h"
+#include "consts.h"
 #include "buddy_system_allocator.h"
 
 static struct Buddy allocator;
