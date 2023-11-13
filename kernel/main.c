@@ -34,7 +34,7 @@ void test_alloc()
     {
         dealloc(blocks[j], 30);
     }
-    printf("Buddy test successfully\n");
+    printf("Buddy test passed!\n");
 }
 
 void main()

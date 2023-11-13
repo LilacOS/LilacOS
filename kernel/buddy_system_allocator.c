@@ -1,21 +1,9 @@
 #include "def.h"
 #include "buddy_system_allocator.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-// PUSH(struct Buddy*, uint64*, int);
-#define PUSH(buddy, block, order)                       \
-    ({                                                  \
-        *((block)) = (uint64)buddy->free_list[(order)]; \
-        buddy->free_list[(order)] = (block);            \
-    })
-// uint64* POP(struct Buddy*, int);
-#define POP(buddy, order)                               \
-    ({                                                  \
-        uint64 *tmp = (buddy)->free_list[(order)];      \
-        (buddy)->free_list[(order)] = (uint64 *)(*tmp); \
-        tmp;                                            \
-    })
+uint64 next_power_of_two(uint64 size);
+uint64 prev_power_of_two(uint64 size);
+int get_order(uint64 size);
 
 void init_buddy(struct Buddy *buddy)
 {

@@ -38,7 +38,7 @@ typedef struct
 } Segment;
 
 /**
- * 某个进程的内存映射关系
+ * 页表，某个进程的内存映射关系
  */
 typedef struct
 {

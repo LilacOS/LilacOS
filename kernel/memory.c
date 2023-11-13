@@ -8,7 +8,6 @@ static struct Buddy allocator;
 void init_allocator()
 {
     init_buddy(&allocator);
-    // todo();
     add_to_buddy(&allocator, (void *)ekernel, (void *)(MEMORY_END + KERNEL_MAP_OFFSET));
 }
 
@@ -17,10 +16,16 @@ void init_allocator()
  *
  * @param size 分配内存的大小，会被调整到最近的2次幂，且最小为64字节
  * @return 内存块的起始地址
+ * @exception 内存不够将会panic
  */
 void *alloc(usize size)
 {
-    return buddy_alloc(&allocator, size);
+    void *block = buddy_alloc(&allocator, size);
+    if (block == NULL)
+    {
+        panic("Not enough memory!");
+    }
+    return block;
 }
 
 /**

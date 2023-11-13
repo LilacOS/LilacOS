@@ -16,11 +16,15 @@ usize *get_vpn_levels(usize vpn)
 }
 
 /**
- * 根据给定的虚拟页号寻找三级页表项，如果找不到对应页表项就会创建页表
+ * 根据页表解析虚拟页号，若没有相应页表则会创建
+ *
+ * @param mapping 页表
+ * @param vpn 虚拟页号
+ * @return 解析得到的页表项
  */
-PageTableEntry *find_entry(Mapping space, usize vpn)
+PageTableEntry *find_entry(Mapping mapping, usize vpn)
 {
-    PageTable *root = (PageTable *)__va(space.root_ppn << 12);
+    PageTable *root = (PageTable *)__va(mapping.root_ppn << 12);
     usize *levels = get_vpn_levels(vpn);
     PageTableEntry *pte = &(root->entries[levels[2]]);
     for (int i = 1; i >= 0; --i)
@@ -37,15 +41,19 @@ PageTableEntry *find_entry(Mapping space, usize vpn)
     return pte;
 }
 
-// 创建一个有根页表的映射
+/**
+ * 新建页表
+ */
 Mapping new_mapping()
 {
     Mapping res = {alloc_frame()};
     return res;
 }
 
-// 线性映射一个段，填充页表
-void map_linear_segment(Mapping space, Segment segment)
+/**
+ * 线性映射一个段，填充页表
+ */
+void map_linear_segment(Mapping mapping, Segment segment)
 {
     usize start_vpn = segment.start_va >> 12;
     usize end_vpn = segment.end_va >> 12;
@@ -55,7 +63,7 @@ void map_linear_segment(Mapping space, Segment segment)
     }
     for (usize vpn = start_vpn; vpn <= end_vpn; ++vpn)
     {
-        PageTableEntry *entry = find_entry(space, vpn);
+        PageTableEntry *entry = find_entry(mapping, vpn);
         if (*entry != 0)
         {
             panic("Virtual address already mapped!\n");
@@ -64,15 +72,19 @@ void map_linear_segment(Mapping space, Segment segment)
     }
 }
 
-// 激活页表
-void activate_mapping(Mapping space)
+/**
+ * 激活页表
+ */
+void activate_mapping(Mapping mapping)
 {
-    usize satp = space.root_ppn | (8L << 60);
+    usize satp = mapping.root_ppn | (8L << 60);
     asm volatile("csrw satp, %0" : : "r"(satp));
     asm volatile("sfence.vma" :::);
 }
 
-// 映射内核，并返回页表（不激活）
+/**
+ * 新建内核映射，并返回页表（不激活）
+ */
 Mapping new_kernel_mapping()
 {
     Mapping m = new_mapping();
@@ -115,7 +127,9 @@ Mapping new_kernel_mapping()
     return m;
 }
 
-// 映射内核
+/**
+ * 映射内核
+ */
 void map_kernel()
 {
     Mapping m = new_kernel_mapping();
