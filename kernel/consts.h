@@ -21,4 +21,9 @@ extern void ekernel();
 // 内核页面线性映射偏移
 #define KERNEL_PAGE_OFFSET 0xffffffff00000
 
+// 内核栈大小
+#define KERNEL_STACK_SIZE (PAGE_SIZE * 2)
+// 应用栈大小
+#define APP_STACK_SIZE (PAGE_SIZE * 5)
+
 #endif

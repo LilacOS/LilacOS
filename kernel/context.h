@@ -14,6 +14,18 @@ typedef struct
     usize sstatus;
     // trap返回地址
     usize sepc;
+    usize kernel_sp;
 } TrapContext;
+
+/**
+ * 进程上下文
+ */
+typedef struct
+{
+    usize ra;
+    usize sp;
+    usize s[12];
+    usize satp;
+} TaskContext;
 
 #endif

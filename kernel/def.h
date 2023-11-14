@@ -34,4 +34,7 @@ void set_timer(usize time);
 /*  trap.c */
 void init_trap();
 
+/* task.c */
+void init_task();
+
 #endif

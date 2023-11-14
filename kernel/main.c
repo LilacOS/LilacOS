@@ -50,5 +50,6 @@ void main()
     init_memory();
     test_alloc();
     map_kernel();
+    init_task();
     shutdown();
 }

@@ -3,6 +3,7 @@ K=kernel
 OBJS = 								\
 	$K/entry.o						\
 	$K/kerneltrap.o					\
+	$K/switch.o						\
 	$K/sbi.o						\
 	$K/printf.o						\
 	$K/trap.o						\
@@ -10,6 +11,7 @@ OBJS = 								\
 	$K/buddy_system_allocator.o		\
 	$K/memory.o						\
 	$K/mapping.o					\
+	$K/task.o						\
 	$K/main.o
 
 # 设置交叉编译工具链
