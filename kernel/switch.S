@@ -33,9 +33,9 @@ __switch:
     .endr
     # 恢复目标进程的内核栈
     ld sp, 8(a1)
-    # 将 a0 寄存器加上 Task 上下文的大小，使其指向 Trap 上下文
+    # 将 a0 寄存器设置为 a1+sizeof(TaskContext)，使其指向 Trap 上下文
     # 从而能使新建的进程在返回后跳转到 __restore() 继续执行
-    addi a0, a0, 15*8
+    addi a0, a1, 15*8
     # 恢复目标进程的 satp 寄存器，刷新 TLB 缓存
     ld s0, 14*8(a1)
     csrw satp, s0

@@ -24,6 +24,6 @@ extern void ekernel();
 // 内核栈大小
 #define KERNEL_STACK_SIZE (PAGE_SIZE * 2)
 // 应用栈大小
-#define APP_STACK_SIZE (PAGE_SIZE * 5)
+#define APP_STACK_SIZE (PAGE_SIZE * 4)
 
 #endif

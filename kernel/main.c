@@ -46,10 +46,10 @@ void main()
         *bss_mem = 0;
     }
 
-    init_trap();
     init_memory();
     test_alloc();
     map_kernel();
+    init_trap();
     init_task();
     shutdown();
 }

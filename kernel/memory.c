@@ -57,7 +57,7 @@ usize alloc_frame()
 /**
  * 释放页帧
  *
- * @param ppm 物理页帧号
+ * @param ppn 物理页帧号
  */
 void dealloc_frame(usize ppn)
 {

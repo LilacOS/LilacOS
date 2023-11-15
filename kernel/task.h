@@ -3,10 +3,13 @@
 
 #include "context.h"
 
-typedef struct {
+/**
+ * 进程控制块
+ */
+typedef struct
+{
     TaskContext task_cx;
     TrapContext trap_cx;
-    // 线程栈底地址
     usize kstack;
 } Task;
 

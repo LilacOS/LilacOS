@@ -52,7 +52,7 @@ void func(TaskContext *current, TaskContext *next, usize c)
     printf("The char passed by is ");
     console_putchar(c);
     console_putchar('\n');
-    printf("Hello world from tempThread!\n");
+    printf("Hello world from test task!\n");
     __switch(current, next);
 }
 
@@ -64,5 +64,6 @@ void init_task()
     tmp->trap_cx.x[11] = (usize)idle;
     tmp->trap_cx.x[12] = (usize)'M';
     __switch(idle, &tmp->task_cx);
-    printf("I'm back from tempThread!\n");
+    printf("[init_task] I'm back from test task!\n");
+    printf("***** Init Task *****\n");
 }
