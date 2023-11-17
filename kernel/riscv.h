@@ -27,9 +27,10 @@ static inline void w_sie(usize x)
     asm volatile("csrw sie, %0" : : "r"(x));
 }
 
-#define SSTATUS_SPP (1L << 8)
-#define SSTATUS_SIE (1L << 1) // 监管者模式中断使能
 #define SSTATUS_UIE (1L << 0) // 用户模式中断使能
+#define SSTATUS_SIE (1L << 1) // 监管者模式中断使能
+#define SSTATUS_SPIE (1L << 5)
+#define SSTATUS_SPP (1L << 8)
 // 监管者模式状态寄存器
 static inline usize r_sstatus()
 {
@@ -51,9 +52,9 @@ static inline usize r_time()
     return x;
 }
 
-static inline uint64 r_satp()
+static inline usize r_satp()
 {
-    uint64 x;
+    usize x;
     asm volatile("csrr %0, satp" : "=r"(x));
     return x;
 }

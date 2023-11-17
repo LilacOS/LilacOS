@@ -28,6 +28,7 @@ void supervisor_timer(TrapContext *context)
 {
     extern void set_next_timeout();
     set_next_timeout();
+    schedule();
 }
 
 void fault(TrapContext *context, usize scause, usize stval)

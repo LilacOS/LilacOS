@@ -1,9 +1,11 @@
 K=kernel
+U=user
 
 OBJS = 								\
 	$K/entry.o						\
 	$K/kerneltrap.o					\
 	$K/switch.o						\
+	$K/linkuser.o					\
 	$K/sbi.o						\
 	$K/printf.o						\
 	$K/trap.o						\
@@ -13,6 +15,12 @@ OBJS = 								\
 	$K/mapping.o					\
 	$K/task.o						\
 	$K/main.o
+
+UPROS =						\
+	$U/syscall.o			\
+	$U/entry.o				\
+	$U/printf.o				\
+	$U/hello.o
 
 # 设置交叉编译工具链
 TOOLPREFIX := riscv64-unknown-elf-
@@ -44,15 +52,22 @@ all: Image
 Image: Kernel
 	$(OBJCOPY) $K/Kernel -O binary Image
 
-Kernel: $(OBJS)
+Kernel: User $(OBJS)
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
-	
+
+User: $(UPROS)
+	$(LD) $(LDFLAGS) -o $U/User $(UPROS)
+	cp $U/User User
+
 # compile all .c file to .o file
 $K/%.o: $K/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $K/%.o: $K/%.S
 	$(CC) -c $< -o $@
+
+$U/%.o: $U/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f */*.d */*.o $K/Kernel Image Image.asm

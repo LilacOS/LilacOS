@@ -35,6 +35,7 @@ void set_timer(usize time);
 void init_trap();
 
 /* task.c */
+void schedule();
 void init_task();
 
 #endif

@@ -26,7 +26,7 @@
 # sscratch 保存 Trap 上下文的地址
 __trap_entry:
     csrrw sp, sscratch, sp
-    # 此时 sscratch 指向应用栈，sp 指向 Trap 上下文
+    # 此时 sscratch 指向用户栈，sp 指向 Trap 上下文
     # 保存通用寄存器，其中 x0 固定为 0
     SAVE x1, 1
     csrr x1, sscratch
