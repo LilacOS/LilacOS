@@ -14,6 +14,7 @@ OBJS = 								\
 	$K/memory.o						\
 	$K/mapping.o					\
 	$K/task.o						\
+	$K/syscall.o					\
 	$K/main.o
 
 UPROS =						\
@@ -70,7 +71,7 @@ $U/%.o: $U/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f */*.d */*.o $K/Kernel Image Image.asm
+	rm -f */*.d */*.o $K/Kernel Image Image.asm $U/User User
 	
 asm: Kernel
 	$(OBJDUMP) -S $K/Kernel > Image.asm

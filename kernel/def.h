@@ -2,6 +2,7 @@
 #define _DEF_H
 
 #include "types.h"
+#include "context.h"
 
 struct Buddy;
 
@@ -31,11 +32,15 @@ usize console_getchar();
 void shutdown() __attribute__((noreturn));
 void set_timer(usize time);
 
+/* syscall.c */
+usize syscall(usize id, usize args[3], TrapContext *context);
+
 /*  trap.c */
 void init_trap();
 
 /* task.c */
 void schedule();
 void init_task();
+void exit_current();
 
 #endif

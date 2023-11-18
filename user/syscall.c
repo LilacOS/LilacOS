@@ -1,12 +1,12 @@
 #include "syscall.h"
 #include "types.h"
 
-ssize_t write(int fd, const void *buf, size_t count)
+void exit()
 {
-    sys_call(Write, fd, buf, count);
+    sys_call(SYS_exit, 0, 0, 0);
 }
 
-void exit(int status)
+void putchar(char c)
 {
-    sys_call(Exit_group, status, 0, 0);
+    sys_call(SYS_putchar, c, 0, 0);
 }

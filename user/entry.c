@@ -10,5 +10,6 @@ __attribute__((weak)) int main()
 
 void _start(uint8 _args, uint8 *_argv)
 {
-    exit(main());
+    main();
+    exit();
 }

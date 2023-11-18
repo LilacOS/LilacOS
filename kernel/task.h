@@ -5,11 +5,10 @@
 
 #define MAX_TASKS 40
 
-typedef enum {
+typedef enum
+{
     Ready,
     Running,
-    Sleep,
-    Exited
 } TaskState;
 
 /**

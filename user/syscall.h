@@ -1,11 +1,8 @@
 #ifndef _SYSCALL_H
 #define _SYSCALL_H
 
-typedef enum
-{
-    Write = 64,
-    Exit_group = 94,
-} SyscallId;
+#define SYS_exit 0
+#define SYS_putchar 1
 
 #define sys_call(__num, __a0, __a1, __a2)                             \
     ({                                                                \
@@ -19,9 +16,5 @@ typedef enum
                      : "memory");                                     \
         a0;                                                           \
     })
-
-#define stdin 0
-#define stdout 1
-#define stderr 2
 
 #endif

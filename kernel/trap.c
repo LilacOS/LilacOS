@@ -13,7 +13,7 @@ void init_trap()
     extern void init_timer();
     init_timer();
     // 监管者模式中断使能
-    w_sstatus(r_sstatus() | SSTATUS_SIE);
+    // w_sstatus(r_sstatus() | SSTATUS_SIE);
     printf("***** Init Trap *****\n");
 }
 
@@ -22,6 +22,16 @@ void breakpoint(TrapContext *context)
     printf("Breakpoint at %p\n", context->sepc);
     // ebreak 指令长度 2 字节，返回后跳过该条指令
     context->sepc += 2;
+}
+
+void syscall_handle(TrapContext *context)
+{
+    context->sepc += 4;
+    usize ret = syscall(
+        context->x[17],
+        (usize[]){context->x[10], context->x[11], context->x[12]},
+        context);
+    context->x[10] = ret;
 }
 
 void supervisor_timer(TrapContext *context)
@@ -46,6 +56,9 @@ void trap_handle(TrapContext *context, usize scause, usize stval)
     {
     case BREAKPOINT:
         breakpoint(context);
+        break;
+    case USER_ENV_CALL:
+        syscall_handle(context);
         break;
     case SUPERVISOR_TIMER:
         supervisor_timer(context);

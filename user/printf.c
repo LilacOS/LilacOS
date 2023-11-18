@@ -5,11 +5,6 @@
 
 static char digits[] = "0123456789abcdef";
 
-void putchar(int c)
-{
-	write(stdout, &c, 1);
-}
-
 static void printint(int xx, int base, int sign)
 {
 	char buf[16];
