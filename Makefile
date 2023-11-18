@@ -15,6 +15,7 @@ OBJS = 								\
 	$K/mapping.o					\
 	$K/task.o						\
 	$K/syscall.o					\
+	$K/elf.o						\
 	$K/main.o
 
 UPROS =						\

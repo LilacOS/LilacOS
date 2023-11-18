@@ -73,6 +73,39 @@ void map_linear_segment(Mapping mapping, Segment segment)
 }
 
 /**
+ * 随机映射一个段，填充页表
+ *
+ * @param mapping 页表
+ * @param segment 需映射的段
+ * @param data 如果非 NULL，则表示映射段的数据，需将该数据填充最终的物理页
+ * @param len 数据的大小
+ */
+void map_framed_segment(Mapping mapping, Segment segment, char *data, usize len)
+{
+    usize start_vpn = segment.start_va / PAGE_SIZE;
+    usize end_vpn = (segment.end_va - 1) / PAGE_SIZE + 1;
+    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    {
+        PageTableEntry *entry = find_entry(mapping, vpn);
+        if (*entry != 0)
+        {
+            panic("Virtual address already mapped!\n");
+        }
+        usize ppn = alloc_frame();
+        *entry = (ppn << 10) | segment.flags | VALID;
+        // 复制数据到目标位置
+        char *dst = (char *)__va(ppn << 12);
+        usize size = len >= PAGE_SIZE ? PAGE_SIZE : len;
+        for (int i = 0; i < size; ++i)
+        {
+            dst[i] = data[i];
+        }
+        data += size;
+        len -= size;
+    }
+}
+
+/**
  * 激活页表
  */
 void activate_mapping(Mapping mapping)

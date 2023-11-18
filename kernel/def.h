@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "context.h"
+#include "mapping.h"
 
 struct Buddy;
 
@@ -21,6 +22,8 @@ void dealloc_frame(usize ppn);
 
 /* mapping.c */
 void map_kernel();
+Mapping new_kernel_mapping();
+void map_framed_segment(Mapping mapping, Segment segment, char *data, usize len);
 
 /* printf.c */
 void printf(char *, ...);
