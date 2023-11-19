@@ -3,4 +3,8 @@ kernel/*.d
 kernel/*.o
 kernel/Kernel
 Image
+user/*.d
+user/*.o
+user/User
+User
 .gdb_history

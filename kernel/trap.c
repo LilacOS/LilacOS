@@ -67,4 +67,6 @@ void trap_handle(TrapContext *context, usize scause, usize stval)
         fault(context, scause, stval);
         break;
     }
+    extern void __restore(TrapContext *);
+    __restore(context);
 }

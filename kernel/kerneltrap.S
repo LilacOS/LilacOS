@@ -51,7 +51,7 @@ __trap_entry:
     csrr a2, stval
     # 加载内核栈
     LOAD sp, 34
-    jal trap_handle
+    j trap_handle
 
 
     .globl __restore
@@ -59,7 +59,7 @@ __trap_entry:
 # 从 Trap 上下文中恢复所有寄存器，并跳转至 Trap 上下文中 sepc 的位置
 __restore:
     # __restore(
-    #     TaskContext *current_task_cx
+    #     TrapContext *current_trap_cx
     # )
     # 将 Trap 上下文地址保存到 sscratch，并加载到 sp
     csrw sscratch, a0

@@ -13,6 +13,9 @@ void add_to_buddy(struct Buddy *buddy, void *start, void *end);
 void *buddy_alloc(struct Buddy *buddy, uint64 size);
 void buddy_dealloc(struct Buddy *buddy, void *block, uint64 size);
 
+/* elf.c */
+Mapping new_user_mapping(char *elf);
+
 /*  memory.c    */
 void init_memory();
 void *alloc(usize size);

@@ -3,6 +3,7 @@
 #include "consts.h"
 #include "task.h"
 #include "riscv.h"
+#include "elf.h"
 
 // 进程调度队列
 Task *tasks[MAX_TASKS] = {NULL};
@@ -29,8 +30,6 @@ void goto_trap_restore(TaskContext *task_cx, usize kernel_sp)
     {
         task_cx->s[i] = 0;
     }
-    // 默认地址空间是内核地址空间
-    task_cx->satp = r_satp();
 }
 
 /**
@@ -39,11 +38,11 @@ void goto_trap_restore(TaskContext *task_cx, usize kernel_sp)
  * @param trap_cx Trap 上下文
  * @param sstatus sstatus 寄存器
  * @param entry 用户入口函数
- * @param app_sp 用户栈栈顶
+ * @param user_sp 用户栈栈顶
  * @param kernel_sp 内核栈栈顶
  */
 void goto_app(TrapContext *trap_cx, usize sstatus, usize entry,
-              usize app_sp, usize kernel_sp)
+              usize user_sp, usize kernel_sp)
 {
     for (int i = 0; i < 32; ++i)
     {
@@ -52,7 +51,7 @@ void goto_app(TrapContext *trap_cx, usize sstatus, usize entry,
     trap_cx->sstatus = sstatus;
     trap_cx->sepc = entry;
     // 设置用户栈
-    trap_cx->x[2] = app_sp;
+    trap_cx->x[2] = user_sp;
     // 设置内核栈
     trap_cx->kernel_sp = kernel_sp;
 }
@@ -60,15 +59,32 @@ void goto_app(TrapContext *trap_cx, usize sstatus, usize entry,
 /**
  * 创建新进程
  */
-Task *new_task(usize entry, usize sstatus)
+Task *new_task(char *elf)
 {
+    Mapping mapping = new_user_mapping(elf);
+    usize ustack_bottom = USER_STACK_OFFSET, ustack_top = USER_STACK_OFFSET + USER_STACK_SIZE;
+    // 映射用户栈
+    Segment stack = {ustack_bottom, ustack_top, VALID | USER | READABLE | WRITABLE};
+    map_framed_segment(mapping, stack, NULL, 0);
+
+    // 设置根页表地址
     Task *res = (Task *)alloc(sizeof(Task));
+    res->task_cx.satp = mapping.root_ppn | (8L << 60);
+
     // 分配内核栈，返回内核栈低地址
     res->kstack = (usize)alloc(KERNEL_STACK_SIZE);
     // 分配用户栈
-    res->ustack = (usize)alloc(USER_STACK_SIZE);
+    res->ustack = USER_STACK_OFFSET;
+
+    usize sstatus = r_sstatus();
+    // 设置返回后的特权级为 U-Mode
+    sstatus &= ~SSTATUS_SPP;
+    // 异步中断使能
+    sstatus |= SSTATUS_SPIE;
+    sstatus &= ~SSTATUS_SIE;
+
     goto_trap_restore(&res->task_cx, res->kstack + KERNEL_STACK_SIZE);
-    goto_app(&res->trap_cx, sstatus, entry,
+    goto_app(&res->trap_cx, sstatus, ((ElfHeader *)elf)->entry,
              res->ustack + USER_STACK_SIZE, res->kstack + KERNEL_STACK_SIZE);
     return res;
 }
@@ -123,7 +139,7 @@ Task *fetch_task()
 void exit_current()
 {
     dealloc((void *)current->kstack, KERNEL_STACK_SIZE);
-    dealloc((void *)current->ustack, USER_STACK_SIZE);
+    // dealloc((void *)current->ustack, USER_STACK_SIZE);
     dealloc((void *)current, sizeof(Task));
     // 当进程终止运行时，current 设置为 NULL
     current = NULL;
@@ -139,7 +155,7 @@ void schedule()
     {
         Task *next = fetch_task();
         if (!next)
-        {   // 没有下一个准备好的进程且当前有进程准备切换
+        { // 没有下一个准备好的进程且当前有进程准备切换
             // 则让该进程再运行一个时钟周期
             if (current)
             {
@@ -147,7 +163,7 @@ void schedule()
             }
         }
         else
-        {   // 找到进程，进行进程切换
+        { // 找到进程，进行进程切换
             // 如果当前进程已经退出，则使用 idle 作为临时进程上下文辅助切换
             TaskContext *prev = current ? (current->state = Ready, &current->task_cx) : idle;
             current = next;
@@ -159,7 +175,13 @@ void schedule()
 
 void init_task()
 {
-    printf("***** Init Task *****\n");
     idle = (TaskContext *)alloc(sizeof(TaskContext));
+    for (int i = 0; i < 5; ++i)
+    {
+        extern void _user_img_start();
+        Task *task = new_task((char *)_user_img_start);
+        add_task(task);
+    }
+    printf("***** Init Task *****\n");
     schedule();
 }

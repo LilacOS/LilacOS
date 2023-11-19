@@ -25,5 +25,7 @@ extern void ekernel();
 #define KERNEL_STACK_SIZE (PAGE_SIZE * 2)
 // 用户栈大小
 #define USER_STACK_SIZE (PAGE_SIZE * 4)
+// 用户栈起始地址
+#define USER_STACK_OFFSET   0xffffffff00000000
 
 #endif

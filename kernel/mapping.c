@@ -68,7 +68,7 @@ void map_linear_segment(Mapping mapping, Segment segment)
         {
             panic("Virtual address already mapped!\n");
         }
-        *entry = ((vpn - KERNEL_PAGE_OFFSET) << 10) | segment.flags | VALID;
+        *entry = ((vpn - KERNEL_PAGE_OFFSET) << 10) | segment.flags;
     }
 }
 
@@ -92,16 +92,18 @@ void map_framed_segment(Mapping mapping, Segment segment, char *data, usize len)
             panic("Virtual address already mapped!\n");
         }
         usize ppn = alloc_frame();
-        *entry = (ppn << 10) | segment.flags | VALID;
-        // 复制数据到目标位置
-        char *dst = (char *)__va(ppn << 12);
-        usize size = len >= PAGE_SIZE ? PAGE_SIZE : len;
-        for (int i = 0; i < size; ++i)
-        {
-            dst[i] = data[i];
+        *entry = (ppn << 10) | segment.flags;
+        if (data)
+        { // 复制数据到目标位置
+            char *dst = (char *)__va(ppn << 12);
+            usize size = len >= PAGE_SIZE ? PAGE_SIZE : len;
+            for (int i = 0; i < size; ++i)
+            {
+                dst[i] = data[i];
+            }
+            data += size;
+            len -= size;
         }
-        data += size;
-        len -= size;
     }
 }
 
@@ -126,35 +128,35 @@ Mapping new_kernel_mapping()
     Segment text = {
         (usize)stext,
         (usize)etext,
-        1L | READABLE | EXECUTABLE};
+        VALID | READABLE | EXECUTABLE};
     map_linear_segment(m, text);
 
     // .rodata 段，r--
     Segment rodata = {
         (usize)srodata,
         (usize)erodata,
-        1L | READABLE};
+        VALID | READABLE};
     map_linear_segment(m, rodata);
 
     // .data 段，rw-
     Segment data = {
         (usize)sdata,
         (usize)edata,
-        1L | READABLE | WRITABLE};
+        VALID | READABLE | WRITABLE};
     map_linear_segment(m, data);
 
     // .bss 段，rw-
     Segment bss = {
         (usize)sbss_with_stack,
         (usize)ebss,
-        1L | READABLE | WRITABLE};
+        VALID | READABLE | WRITABLE};
     map_linear_segment(m, bss);
 
     // 剩余空间，rw-
     Segment other = {
         (usize)ekernel,
         (usize)(MEMORY_END + KERNEL_MAP_OFFSET),
-        1L | READABLE | WRITABLE};
+        VALID | READABLE | WRITABLE};
     map_linear_segment(m, other);
 
     return m;
