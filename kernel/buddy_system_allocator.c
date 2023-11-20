@@ -1,4 +1,5 @@
 #include "def.h"
+#include "types.h"
 #include "buddy_system_allocator.h"
 
 uint64 next_power_of_two(uint64 size);

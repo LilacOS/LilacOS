@@ -6,7 +6,7 @@
 // ELF 魔数
 #define ELF_MAGIC 0x464C457FU
 
-typedef struct
+struct ElfHeader
 {
 	uint magic;
 	uchar elf[12];
@@ -23,9 +23,9 @@ typedef struct
 	ushort shentsize;
 	ushort shnum;
 	ushort shstrndx;
-} ElfHeader;
+};
 
-typedef struct
+struct ProgHeader
 {
 	uint32 type;
 	uint32 flags;
@@ -35,7 +35,7 @@ typedef struct
 	uint64 filesz;
 	uint64 memsz;
 	uint64 align;
-} ProgHeader;
+};
 
 // 程序段头类型
 #define ELF_PROG_LOAD 1

@@ -4,16 +4,15 @@
 #include "task.h"
 #include "riscv.h"
 #include "elf.h"
+#include "mapping.h"
 
 // 进程调度队列
-Task *tasks[MAX_TASKS] = {NULL};
+struct Task *tasks[MAX_TASKS] = {NULL};
 // 当前运行的进程
-Task *current = NULL;
+struct Task *current = NULL;
 // 退出的进程由于资源已经释放，因此使用 idle 作为一个空的
 // 进程上下文用于进程切换
-TaskContext *idle = NULL;
-
-extern void __switch(TaskContext *current_task_cx, TaskContext *next_task_cx);
+struct TaskContext *idle = NULL;
 
 /**
  * 初始化设置进程上下文使其返回 __restore
@@ -21,9 +20,8 @@ extern void __switch(TaskContext *current_task_cx, TaskContext *next_task_cx);
  * @param task_cx 进程上下文
  * @param kernel_sp 内核栈栈顶
  */
-void goto_trap_restore(TaskContext *task_cx, usize kernel_sp)
+void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp)
 {
-    extern void __restore();
     task_cx->ra = (usize)__restore;
     task_cx->sp = kernel_sp;
     for (int i = 0; i < 12; ++i)
@@ -41,7 +39,7 @@ void goto_trap_restore(TaskContext *task_cx, usize kernel_sp)
  * @param user_sp 用户栈栈顶
  * @param kernel_sp 内核栈栈顶
  */
-void goto_app(TrapContext *trap_cx, usize sstatus, usize entry,
+void goto_app(struct TrapContext *trap_cx, usize sstatus, usize entry,
               usize user_sp, usize kernel_sp)
 {
     for (int i = 0; i < 32; ++i)
@@ -59,22 +57,21 @@ void goto_app(TrapContext *trap_cx, usize sstatus, usize entry,
 /**
  * 创建新进程
  */
-Task *new_task(char *elf)
+struct Task *new_task(char *elf)
 {
-    Mapping mapping = new_user_mapping(elf);
-    usize ustack_bottom = USER_STACK_OFFSET, ustack_top = USER_STACK_OFFSET + USER_STACK_SIZE;
-    // 映射用户栈
-    Segment stack = {ustack_bottom, ustack_top, VALID | USER | READABLE | WRITABLE};
-    map_framed_segment(mapping, stack, NULL, 0);
+    struct Mapping mapping = new_user_mapping(elf);
 
     // 设置根页表地址
-    Task *res = (Task *)alloc(sizeof(Task));
-    res->task_cx.satp = mapping.root_ppn | (8L << 60);
+    struct Task *res = (struct Task *)alloc(sizeof(struct Task));
+    res->task_cx.satp = __satp(mapping.root_ppn);
 
     // 分配内核栈，返回内核栈低地址
     res->kstack = (usize)alloc(KERNEL_STACK_SIZE);
-    // 分配用户栈
+    // 分配映射用户栈
     res->ustack = USER_STACK_OFFSET;
+    usize ustack_bottom = USER_STACK_OFFSET, ustack_top = USER_STACK_OFFSET + USER_STACK_SIZE;
+    struct Segment stack = {ustack_bottom, ustack_top, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE};
+    map_framed_segment(mapping, stack, NULL, 0);
 
     usize sstatus = r_sstatus();
     // 设置返回后的特权级为 U-Mode
@@ -84,7 +81,7 @@ Task *new_task(char *elf)
     sstatus &= ~SSTATUS_SIE;
 
     goto_trap_restore(&res->task_cx, res->kstack + KERNEL_STACK_SIZE);
-    goto_app(&res->trap_cx, sstatus, ((ElfHeader *)elf)->entry,
+    goto_app(&res->trap_cx, sstatus, ((struct ElfHeader *)elf)->entry,
              res->ustack + USER_STACK_SIZE, res->kstack + KERNEL_STACK_SIZE);
     return res;
 }
@@ -92,7 +89,7 @@ Task *new_task(char *elf)
 /**
  * 添加进程到调度队列中
  */
-void add_task(Task *task)
+void add_task(struct Task *task)
 {
     for (int i = 0; i < MAX_TASKS; ++i)
     {
@@ -107,11 +104,11 @@ void add_task(Task *task)
 /**
  * 从调度队列中寻找下一个准备好的进程返回
  */
-Task *fetch_task()
+struct Task *fetch_task()
 {
     // 下一个首先查找的进程下标
     static int idx = 0;
-    Task *res = NULL;
+    struct Task *res = NULL;
     for (int i = 0; i < MAX_TASKS; ++i)
     {
         int p = (idx + i) % MAX_TASKS;
@@ -139,8 +136,7 @@ Task *fetch_task()
 void exit_current()
 {
     dealloc((void *)current->kstack, KERNEL_STACK_SIZE);
-    // dealloc((void *)current->ustack, USER_STACK_SIZE);
-    dealloc((void *)current, sizeof(Task));
+    dealloc((void *)current, sizeof(struct Task));
     // 当进程终止运行时，current 设置为 NULL
     current = NULL;
     schedule();
@@ -153,9 +149,9 @@ void schedule()
 {
     while (1)
     {
-        Task *next = fetch_task();
+        struct Task *next = fetch_task();
         if (!next)
-        { // 没有下一个准备好的进程且当前有进程准备切换
+        {   // 没有下一个准备好的进程且当前有进程准备切换
             // 则让该进程再运行一个时钟周期
             if (current)
             {
@@ -163,9 +159,9 @@ void schedule()
             }
         }
         else
-        { // 找到进程，进行进程切换
+        {   // 找到进程，进行进程切换
             // 如果当前进程已经退出，则使用 idle 作为临时进程上下文辅助切换
-            TaskContext *prev = current ? (current->state = Ready, &current->task_cx) : idle;
+            struct TaskContext *prev = current ? (current->state = Ready, &current->task_cx) : idle;
             current = next;
             next->state = Running;
             __switch(prev, &current->task_cx);
@@ -175,11 +171,11 @@ void schedule()
 
 void init_task()
 {
-    idle = (TaskContext *)alloc(sizeof(TaskContext));
+    idle = (struct TaskContext *)alloc(sizeof(struct TaskContext));
     for (int i = 0; i < 5; ++i)
     {
         extern void _user_img_start();
-        Task *task = new_task((char *)_user_img_start);
+        struct Task *task = new_task((char *)_user_img_start);
         add_task(task);
     }
     printf("***** Init Task *****\n");

@@ -6,8 +6,6 @@ static const usize CLOCK_FREQ = 10000000;
 // 每10ms触发一次时钟中断
 static const usize TICKS_PER_SEC = 100;
 
-void set_next_timeout();
-
 void init_timer()
 {
     // 时钟中断使能

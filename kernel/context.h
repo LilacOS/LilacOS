@@ -6,7 +6,7 @@
 /**
  * Trap上下文
  */
-typedef struct
+struct TrapContext
 {
     // 32个通用寄存器
     usize x[32];
@@ -15,17 +15,17 @@ typedef struct
     // trap返回地址
     usize sepc;
     usize kernel_sp;
-} TrapContext;
+};
 
 /**
  * 进程上下文
  */
-typedef struct
+struct TaskContext
 {
     usize ra;
     usize sp;
     usize s[12];
     usize satp;
-} TaskContext;
+};
 
 #endif

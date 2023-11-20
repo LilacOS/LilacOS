@@ -7,24 +7,22 @@
 void init_trap()
 {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
-    extern void __trap_entry();
     w_stvec((usize)__trap_entry | MODE_DIRECT);
     // 初始化时钟中断
-    extern void init_timer();
     init_timer();
     // 监管者模式中断使能
     // w_sstatus(r_sstatus() | SSTATUS_SIE);
     printf("***** Init Trap *****\n");
 }
 
-void breakpoint(TrapContext *context)
+void breakpoint(struct TrapContext *context)
 {
     printf("Breakpoint at %p\n", context->sepc);
     // ebreak 指令长度 2 字节，返回后跳过该条指令
     context->sepc += 2;
 }
 
-void syscall_handle(TrapContext *context)
+void syscall_handle(struct TrapContext *context)
 {
     context->sepc += 4;
     usize ret = syscall(
@@ -34,23 +32,21 @@ void syscall_handle(TrapContext *context)
     context->x[10] = ret;
 }
 
-void supervisor_timer(TrapContext *context)
+void supervisor_timer(struct TrapContext *context)
 {
-    extern void set_next_timeout();
     set_next_timeout();
     schedule();
 }
 
-void fault(TrapContext *context, usize scause, usize stval)
+void fault(struct TrapContext *context, usize scause, usize stval)
 {
-    printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n",
-           scause,
-           context->sepc,
-           stval);
-    panic("");
+    panic("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n",
+          scause,
+          context->sepc,
+          stval);
 }
 
-void trap_handle(TrapContext *context, usize scause, usize stval)
+void trap_handle(struct TrapContext *context, usize scause, usize stval)
 {
     switch (scause)
     {
@@ -67,6 +63,5 @@ void trap_handle(TrapContext *context, usize scause, usize stval)
         fault(context, scause, stval);
         break;
     }
-    extern void __restore(TrapContext *);
     __restore(context);
 }
