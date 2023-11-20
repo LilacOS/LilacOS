@@ -3,10 +3,10 @@
 
 /* printf.c */
 void printf(char *, ...);
-void panic(char *);
+void panic(char *, ...);
 
 /* syscall.c */
-void putchar(char c);
+void putchar(char);
 void exit();
 
 #endif

@@ -29,25 +29,23 @@ static void printint(int xx, int base, int sign)
 		putchar(buf[i]);
 }
 
-static void printptr(uint64 x)
+static void printptr(usize x)
 {
 	int i;
 	putchar('0');
 	putchar('x');
-	for (i = 0; i < (sizeof(uint64) * 2); i++, x <<= 4)
-		putchar(digits[x >> (sizeof(uint64) * 8 - 4)]);
+	for (i = 0; i < (sizeof(usize) * 2); i++, x <<= 4)
+		putchar(digits[x >> (sizeof(usize) * 8 - 4)]);
 }
 
-void printf(char *fmt, ...)
+void __printf(char *fmt, va_list ap)
 {
-	va_list ap;
-	int i, c;
-	char *s;
+	int i;
+	char c, *s;
 
-	if (fmt == 0)
-		panic("null fmt");
+	if (!fmt)
+		panic("[printf] null fmt");
 
-	va_start(ap, fmt);
 	for (i = 0; (c = fmt[i] & 0xff) != 0; i++)
 	{
 		if (c != '%')
@@ -67,7 +65,7 @@ void printf(char *fmt, ...)
 			printint(va_arg(ap, int), 16, 1);
 			break;
 		case 'p':
-			printptr(va_arg(ap, uint64));
+			printptr(va_arg(ap, usize));
 			break;
 		case 's':
 			if ((s = va_arg(ap, char *)) == 0)
@@ -86,10 +84,24 @@ void printf(char *fmt, ...)
 	}
 }
 
-void panic(char *s)
+void printf(char *fmt, ...)
 {
-	printf("panic: ");
-	printf(s);
-	printf("\n");
-	exit(1);
+	if (!fmt)
+		panic("[printf] null fmt");
+	va_list ap;
+	va_start(ap, fmt);
+	__printf(fmt, ap);
+	va_end(ap);
+}
+
+void panic(char *fmt, ...)
+{
+	if (fmt)
+	{
+		va_list ap;
+		va_start(ap, fmt);
+		__printf(fmt, ap);
+		va_end(ap);
+	}
+	exit();
 }
