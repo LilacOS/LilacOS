@@ -3,6 +3,25 @@
 #include "consts.h"
 #include "mapping.h"
 
+struct MemoryMap *new_mapping()
+{
+    struct MemoryMap *res = (struct MemoryMap *)alloc(sizeof(struct MemoryMap));
+    res->root_ppn = alloc_frame();
+    res->areas.next = &res->areas;
+    return res;
+}
+
+struct Segment *new_segment(usize start_va, usize end_va, usize flags, enum SegmentType type)
+{
+    struct Segment *res = (struct Segment *)alloc(sizeof(struct Segment));
+    res->start_va = start_va;
+    res->end_va = end_va;
+    res->flags = flags;
+    res->type = type;
+    res->list.next = &res->list;
+    return res;
+}
+
 /**
  * 提取虚拟页号的各级页表号
  */
@@ -18,13 +37,13 @@ usize *get_vpn_levels(usize vpn)
 /**
  * 根据页表解析虚拟页号，若没有相应页表则会创建
  *
- * @param mapping 页表
+ * @param root_ppn 根页表物理地址
  * @param vpn 虚拟页号
  * @return 解析得到的页表项
  */
-PageTableEntry *find_entry(struct Mapping mapping, usize vpn)
+PageTableEntry *find_entry(usize root_ppn, usize vpn)
 {
-    struct PageTable *root = (struct PageTable *)__va(mapping.root_ppn << 12);
+    struct PageTable *root = (struct PageTable *)__va(root_ppn << 12);
     usize *levels = get_vpn_levels(vpn);
     PageTableEntry *pte = &(root->entries[levels[2]]);
     for (int i = 1; i >= 0; --i)
@@ -42,54 +61,26 @@ PageTableEntry *find_entry(struct Mapping mapping, usize vpn)
 }
 
 /**
- * 新建页表
- */
-struct Mapping new_mapping()
-{
-    struct Mapping res = {alloc_frame()};
-    return res;
-}
-
-/**
- * 线性映射一个段，填充页表
- */
-void map_linear_segment(struct Mapping mapping, struct Segment segment)
-{
-    usize start_vpn = segment.start_va >> 12;
-    usize end_vpn = ((segment.end_va - 1) >> 12) + 1;
-    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
-    {
-        PageTableEntry *entry = find_entry(mapping, vpn);
-        if (*entry != 0)
-        {
-            panic("Virtual address already mapped!\n");
-        }
-        *entry = PPN2PTE(__ppn(vpn), segment.flags);
-    }
-}
-
-/**
- * 随机映射一个段，填充页表。
+ * 映射一个段，填充页表。
  *
- * @param mapping 页表
+ * @param root_ppn 根页表物理地址
  * @param segment 需映射的段
  * @param data 如果非 NULL，则表示映射段的数据，需将该数据填充最终的物理页
  * @param len 数据的大小
- * @note 映射后的物理地址是随机的。
  */
-void map_framed_segment(struct Mapping mapping, struct Segment segment, char *data, usize len)
+void map_segment(usize root_ppn, struct Segment *segment, char *data, usize len)
 {
-    usize start_vpn = segment.start_va >> 12;
-    usize end_vpn = ((segment.end_va - 1) >> 12) + 1;
+    usize start_vpn = segment->start_va >> 12;
+    usize end_vpn = ((segment->end_va - 1) >> 12) + 1;
     for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
     {
-        PageTableEntry *entry = find_entry(mapping, vpn);
+        PageTableEntry *entry = find_entry(root_ppn, vpn);
         if (*entry != 0)
         {
-            panic("Virtual address already mapped!\n");
+            panic("[map_segment] Virtual address already mapped!\n");
         }
-        usize ppn = alloc_frame();
-        *entry = PPN2PTE(ppn, segment.flags);
+        usize ppn = segment->type == Linear ? __ppn(vpn) : alloc_frame();
+        *entry = PPN2PTE(ppn, segment->flags);
         if (data)
         { // 复制数据到目标位置
             char *dst = (char *)__va(ppn << 12);
@@ -107,9 +98,9 @@ void map_framed_segment(struct Mapping mapping, struct Segment segment, char *da
 /**
  * 激活页表
  */
-void activate_mapping(struct Mapping mapping)
+void activate_pagetable(usize root_ppn)
 {
-    usize satp = __satp(mapping.root_ppn);
+    usize satp = __satp(root_ppn);
     asm volatile("csrw satp, %0" : : "r"(satp));
     asm volatile("sfence.vma" :::);
 }
@@ -117,46 +108,53 @@ void activate_mapping(struct Mapping mapping)
 /**
  * 新建内核映射，并返回页表（不激活）
  */
-struct Mapping new_kernel_mapping()
+struct MemoryMap *new_kernel_mapping()
 {
-    struct Mapping m = new_mapping();
+    struct MemoryMap *mm = new_mapping();
 
     // .text 段，r-x
-    struct Segment text = {
-        (usize)stext,
-        (usize)etext,
-        PAGE_VALID | PAGE_READ | PAGE_EXEC};
-    map_linear_segment(m, text);
+    struct Segment *text = new_segment(
+        (usize)stext, (usize)etext,
+        PAGE_VALID | PAGE_READ | PAGE_EXEC,
+        Linear);
+    map_segment(mm->root_ppn, text, NULL, 0);
 
     // .rodata 段，r--
-    struct Segment rodata = {
-        (usize)srodata,
-        (usize)erodata,
-        PAGE_VALID | PAGE_READ};
-    map_linear_segment(m, rodata);
+    struct Segment *rodata = new_segment(
+        (usize)srodata, (usize)erodata,
+        PAGE_VALID | PAGE_READ,
+        Linear);
+    map_segment(mm->root_ppn, rodata, NULL, 0);
 
     // .data 段，rw-
-    struct Segment data = {
-        (usize)sdata,
-        (usize)edata,
-        PAGE_VALID | PAGE_READ | PAGE_WRITE};
-    map_linear_segment(m, data);
+    struct Segment *data = new_segment(
+        (usize)sdata, (usize)edata,
+        PAGE_VALID | PAGE_READ | PAGE_WRITE,
+        Linear);
+    map_segment(mm->root_ppn, data, NULL, 0);
 
     // .bss 段，rw-
-    struct Segment bss = {
-        (usize)sbss_with_stack,
-        (usize)ebss,
-        PAGE_VALID | PAGE_READ | PAGE_WRITE};
-    map_linear_segment(m, bss);
+    struct Segment *bss = new_segment(
+        (usize)sbss_with_stack, (usize)ebss,
+        PAGE_VALID | PAGE_READ | PAGE_WRITE,
+        Linear);
+    map_segment(mm->root_ppn, bss, NULL, 0);
 
     // 剩余空间，rw-
-    struct Segment other = {
-        (usize)ekernel,
-        __va(MEMORY_END),
-        PAGE_VALID | PAGE_READ | PAGE_WRITE};
-    map_linear_segment(m, other);
+    struct Segment *other = new_segment(
+        (usize)ekernel, __va(MEMORY_END),
+        PAGE_VALID | PAGE_READ | PAGE_WRITE,
+        Linear);
+    map_segment(mm->root_ppn, other, NULL, 0);
 
-    return m;
+    // 连接各个映射区域
+    list_add(&other->list, &mm->areas);
+    list_add(&bss->list, &mm->areas);
+    list_add(&data->list, &mm->areas);
+    list_add(&rodata->list, &mm->areas);
+    list_add(&text->list, &mm->areas);
+
+    return mm;
 }
 
 /**
@@ -164,7 +162,7 @@ struct Mapping new_kernel_mapping()
  */
 void map_kernel()
 {
-    struct Mapping m = new_kernel_mapping();
-    activate_mapping(m);
+    struct MemoryMap *mm = new_kernel_mapping();
+    activate_pagetable(mm->root_ppn);
     printf("***** Remap Kernel *****\n");
 }

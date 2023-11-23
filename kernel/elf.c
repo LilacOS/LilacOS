@@ -31,9 +31,9 @@ usize convert_flags(uint32 flags)
  * @return 用户地址空间页表
  * @note 不包含用户栈及内核栈
  */
-struct Mapping new_user_mapping(char *elf)
+struct MemoryMap *new_user_mapping(char *elf)
 {
-    struct Mapping res = new_kernel_mapping();
+    struct MemoryMap *res = new_kernel_mapping();
     struct ElfHeader *e_header = (struct ElfHeader *)elf;
     // 校验 ELF 头
     if (e_header->magic != ELF_MAGIC)
@@ -50,9 +50,9 @@ struct Mapping new_user_mapping(char *elf)
         }
         usize flags = convert_flags(p_header->flags);
         usize start_va = p_header->vaddr, end_va = start_va + p_header->memsz;
-        struct Segment segment = {start_va, end_va, flags};
+        struct Segment *segment = new_segment(start_va, end_va, flags, Framed);
         char *data = (char *)((usize)elf + p_header->off);
-        map_framed_segment(res, segment, data, p_header->memsz);
+        map_segment(res->root_ppn, segment, data, p_header->memsz);
     }
     return res;
 }

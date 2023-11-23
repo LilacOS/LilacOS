@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "consts.h"
+#include "list.h"
 
 #define __va(pa) ((pa) + KERNEL_MAP_OFFSET)
 #define __pa(va) ((va)-KERNEL_MAP_OFFSET)
@@ -11,13 +12,6 @@
 #define __satp(ppn) ((ppn) | (8L << 60))
 #define PTE2PA(pte) ((((usize)pte) & 0x003ffffffffffC00) << 2)
 #define PPN2PTE(ppn, flags) (((ppn) << 10) | (flags))
-
-typedef usize PageTableEntry;
-
-struct PageTable
-{
-    PageTableEntry entries[PAGE_SIZE >> 3];
-};
 
 // 页表项的 8 个标志位
 #define PAGE_VALID (1 << 0)
@@ -29,8 +23,21 @@ struct PageTable
 #define PAGE_ACCESS (1 << 6)
 #define PAGE_DIRTY (1 << 7)
 
+enum SegmentType
+{
+    Linear,
+    Framed,
+};
+
+typedef usize PageTableEntry;
+
+struct PageTable
+{
+    PageTableEntry entries[PAGE_SIZE >> 3];
+};
+
 /**
- * 映射片段，描述一个映射的行为
+ * 映射段
  */
 struct Segment
 {
@@ -39,15 +46,18 @@ struct Segment
     usize end_va;
     // 映射的权限标志
     usize flags;
+    enum SegmentType type;
+    struct list_head list;
 };
 
 /**
- * 页表，某个进程的内存映射关系
+ * 进程地址空间
  */
-struct Mapping
+struct MemoryMap
 {
     // 根页表的物理页号
     usize root_ppn;
+    struct list_head areas;
 };
 
 #endif

@@ -59,19 +59,19 @@ void goto_app(struct TrapContext *trap_cx, usize sstatus, usize entry,
  */
 struct Task *new_task(char *elf)
 {
-    struct Mapping mapping = new_user_mapping(elf);
+    struct MemoryMap *mapping = new_user_mapping(elf);
 
     // 设置根页表地址
     struct Task *res = (struct Task *)alloc(sizeof(struct Task));
-    res->task_cx.satp = __satp(mapping.root_ppn);
+    res->task_cx.satp = __satp(mapping->root_ppn);
 
     // 分配内核栈，返回内核栈低地址
     res->kstack = (usize)alloc(KERNEL_STACK_SIZE);
     // 分配映射用户栈
     res->ustack = USER_STACK_OFFSET;
     usize ustack_bottom = USER_STACK_OFFSET, ustack_top = USER_STACK_OFFSET + USER_STACK_SIZE;
-    struct Segment stack = {ustack_bottom, ustack_top, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE};
-    map_framed_segment(mapping, stack, NULL, 0);
+    struct Segment *stack = new_segment(ustack_bottom, ustack_top, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE, Framed);
+    map_segment(mapping->root_ppn, stack, NULL, 0);
 
     usize sstatus = r_sstatus();
     // 设置返回后的特权级为 U-Mode
@@ -151,7 +151,7 @@ void schedule()
     {
         struct Task *next = fetch_task();
         if (!next)
-        {   // 没有下一个准备好的进程且当前有进程准备切换
+        { // 没有下一个准备好的进程且当前有进程准备切换
             // 则让该进程再运行一个时钟周期
             if (current)
             {
@@ -159,7 +159,7 @@ void schedule()
             }
         }
         else
-        {   // 找到进程，进行进程切换
+        { // 找到进程，进行进程切换
             // 如果当前进程已经退出，则使用 idle 作为临时进程上下文辅助切换
             struct TaskContext *prev = current ? (current->state = Ready, &current->task_cx) : idle;
             current = next;

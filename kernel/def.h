@@ -5,9 +5,10 @@
 
 struct Buddy;
 struct Segment;
-struct Mapping;
+struct MemoryMap;
 struct TrapContext;
 struct TaskContext;
+enum SegmentType;
 
 /* buddy_system_allocator.c */
 void init_buddy(struct Buddy *);
@@ -16,7 +17,7 @@ void *buddy_alloc(struct Buddy *, uint64);
 void buddy_dealloc(struct Buddy *, void *, uint64);
 
 /* elf.c */
-struct Mapping new_user_mapping(char *);
+struct MemoryMap *new_user_mapping(char *);
 
 /* kerneltrap.S */
 void __trap_entry();
@@ -30,9 +31,10 @@ usize alloc_frame();
 void dealloc_frame(usize);
 
 /* mapping.c */
+struct Segment *new_segment(usize, usize, usize, enum SegmentType);
+void map_segment(usize, struct Segment *, char *, usize);
+struct MemoryMap *new_kernel_mapping();
 void map_kernel();
-struct Mapping new_kernel_mapping();
-void map_framed_segment(struct Mapping, struct Segment, char *, usize);
 
 /* printf.c */
 void printf(char *, ...);
