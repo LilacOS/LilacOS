@@ -35,27 +35,34 @@ usize *get_vpn_levels(usize vpn)
 }
 
 /**
- * 根据页表解析虚拟页号，若没有相应页表则会创建
+ * 根据页表解析虚拟页号
  *
  * @param root_ppn 根页表物理地址
  * @param vpn 虚拟页号
- * @return 解析得到的页表项
+ * @param flag 表示页表不存在时是否需要创建
+ * @return 解析得到的页表项指针。若找不到则返回 NULL
  */
-PageTableEntry *find_entry(usize root_ppn, usize vpn)
+PageTableEntry *find_entry(usize root_ppn, usize vpn, int flag)
 {
-    struct PageTable *root = (struct PageTable *)__va(root_ppn << 12);
+    PageTable root = (PageTable)__va(root_ppn << 12);
     usize *levels = get_vpn_levels(vpn);
-    PageTableEntry *pte = &(root->entries[levels[2]]);
+    PageTableEntry *pte = &(root[levels[2]]);
     for (int i = 1; i >= 0; --i)
     {
         if (*pte == 0)
         {
-            // 页表不存在，创建新页表
-            usize new_ppn = alloc_frame();
-            *pte = PPN2PTE(new_ppn, PAGE_VALID);
+            if (flag)
+            { // 页表不存在，创建新页表
+                usize new_ppn = alloc_frame();
+                *pte = PPN2PTE(new_ppn, PAGE_VALID);
+            }
+            else
+            {
+                return NULL;
+            }
         }
         usize next_pa = PTE2PA(*pte);
-        pte = &(((struct PageTable *)__va(next_pa))->entries[levels[i]]);
+        pte = &(((PageTable)__va(next_pa))[levels[i]]);
     }
     return pte;
 }
@@ -74,7 +81,7 @@ void map_segment(usize root_ppn, struct Segment *segment, char *data, usize len)
     usize end_vpn = ((segment->end_va - 1) >> 12) + 1;
     for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
     {
-        PageTableEntry *entry = find_entry(root_ppn, vpn);
+        PageTableEntry *entry = find_entry(root_ppn, vpn, 1);
         if (*entry != 0)
         {
             panic("[map_segment] Virtual address already mapped!\n");
@@ -93,6 +100,53 @@ void map_segment(usize root_ppn, struct Segment *segment, char *data, usize len)
             len -= size;
         }
     }
+}
+
+/**
+ * 释放映射段数据页（非页表本身）
+ *
+ * @param root_ppn 根页表物理地址
+ * @param segment 需释放的段
+ */
+void unmap_segment(usize root_ppn, struct Segment *segment)
+{
+    if (segment->type == Linear)
+    {
+        return;
+    }
+    usize start_vpn = segment->start_va >> 12;
+    usize end_vpn = ((segment->end_va - 1) >> 12) + 1;
+    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    {
+        PageTableEntry *entry = find_entry(root_ppn, vpn, 0);
+        if (!entry)
+        {
+            panic("[unmap_segment] Can't find pte\n");
+        }
+        usize ppn = PTE2PPN(*entry);
+        dealloc_frame(ppn);
+    }
+}
+
+/**
+ * 释放页表内存
+ *
+ * @param ppn 页表所在物理地址
+ */
+void dealloc_pagetable(usize ppn)
+{
+    PageTable pagetable = (PageTable)__va(ppn << 12);
+    for (int i = 0; i < 512; ++i)
+    {
+        PageTableEntry pte = pagetable[i];
+        if ((pte & PAGE_VALID) && (pte & (PAGE_READ | PAGE_WRITE | PAGE_EXEC)) == 0)
+        { // 下级页表
+            usize next_ppn = PTE2PPN(pte);
+            dealloc_pagetable(next_ppn);
+            pagetable[i] = 0;
+        }
+    }
+    dealloc_frame(ppn);
 }
 
 /**

@@ -11,6 +11,7 @@
 #define __ppn(vpn) ((vpn)-KERNEL_PAGE_OFFSET)
 #define __satp(ppn) ((ppn) | (8L << 60))
 #define PTE2PA(pte) ((((usize)pte) & 0x003ffffffffffC00) << 2)
+#define PTE2PPN(pte) ((((usize)pte) & 0x003ffffffffffC00) >> 10)
 #define PPN2PTE(ppn, flags) (((ppn) << 10) | (flags))
 
 // 页表项的 8 个标志位
@@ -30,11 +31,7 @@ enum SegmentType
 };
 
 typedef usize PageTableEntry;
-
-struct PageTable
-{
-    PageTableEntry entries[PAGE_SIZE >> 3];
-};
+typedef PageTableEntry* PageTable;
 
 /**
  * 映射段
