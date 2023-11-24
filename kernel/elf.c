@@ -25,13 +25,13 @@ usize convert_flags(uint32 flags)
 }
 
 /**
- * 根据 ELF 文件新建用户进程地址空间
+ * 根据 ELF 文件新建进程地址空间（包含内核及用户）
  *
  * @param elf 用户可执行文件数据指针
- * @return 用户地址空间页表
+ * @return 进程地址空间
  * @note 不包含用户栈及内核栈
  */
-struct MemoryMap *new_user_mapping(char *elf)
+struct MemoryMap *from_elf(char *elf)
 {
     struct MemoryMap *res = new_kernel_mapping();
     struct ElfHeader *e_header = (struct ElfHeader *)elf;
@@ -53,6 +53,7 @@ struct MemoryMap *new_user_mapping(char *elf)
         struct Segment *segment = new_segment(start_va, end_va, flags, Framed);
         char *data = (char *)((usize)elf + p_header->off);
         map_segment(res->root_ppn, segment, data, p_header->memsz);
+        list_add(&segment->list, &res->areas);
     }
     return res;
 }

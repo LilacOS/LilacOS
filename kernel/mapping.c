@@ -18,7 +18,7 @@ struct Segment *new_segment(usize start_va, usize end_va, usize flags, enum Segm
     res->end_va = end_va;
     res->flags = flags;
     res->type = type;
-    res->list.next = &res->list;
+    INIT_LIST_HEAD(&res->list);
     return res;
 }
 
@@ -65,6 +65,27 @@ PageTableEntry *find_entry(usize root_ppn, usize vpn, int flag)
         pte = &(((PageTable)__va(next_pa))[levels[i]]);
     }
     return pte;
+}
+
+/**
+ * 将虚拟地址映射为物理地址
+ *
+ * @param root_ppn 根页表物理地址
+ * @param start_va 开始映射的虚拟地址
+ * @param start_pa 开始映射的物理地址
+ * @param size 映射大小
+ * @param flags 映射权限
+ */
+void map_pages(usize root_ppn, usize start_va, usize start_pa, int size, usize flags)
+{
+    usize start_vpn = start_va >> 12;
+    usize end_vpn = ((start_va + size - 1) >> 12) + 1;
+    usize start_ppn = start_pa >> 12;
+    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    {
+        PageTableEntry *entry = find_entry(root_ppn, vpn, 1);
+        *entry = PPN2PTE(start_ppn++, flags);
+    }
 }
 
 /**
@@ -160,7 +181,7 @@ void activate_pagetable(usize root_ppn)
 }
 
 /**
- * 新建内核映射，并返回页表（不激活）
+ * 新建内核地址空间
  */
 struct MemoryMap *new_kernel_mapping()
 {

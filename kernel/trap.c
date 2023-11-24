@@ -3,6 +3,9 @@
 #include "def.h"
 #include "riscv.h"
 #include "trap.h"
+#include "task.h"
+
+extern struct Task *current, *init;
 
 void init_trap()
 {
@@ -10,8 +13,6 @@ void init_trap()
     w_stvec((usize)__trap_entry | MODE_DIRECT);
     // 初始化时钟中断
     init_timer();
-    // 监管者模式中断使能
-    // w_sstatus(r_sstatus() | SSTATUS_SIE);
     printf("***** Init Trap *****\n");
 }
 
@@ -27,15 +28,16 @@ void syscall_handle(struct TrapContext *context)
     context->sepc += 4;
     usize ret = syscall(
         context->x[17],
-        (usize[]){context->x[10], context->x[11], context->x[12]},
-        context);
+        (usize[]){context->x[10], context->x[11], context->x[12]});
     context->x[10] = ret;
 }
 
 void supervisor_timer(struct TrapContext *context)
 {
     set_next_timeout();
-    schedule();
+    current->state = Ready;
+    add_task(current);
+    __switch(&current->task_cx, &init->task_cx);
 }
 
 void fault(struct TrapContext *context, usize scause, usize stval)

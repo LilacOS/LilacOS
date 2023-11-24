@@ -1,7 +1,7 @@
 #ifndef _LIST_H
 #define _LIST_H
 
-/* 更改自 linux2.6 */
+/* linux2.6 */
 
 /**
  * 结构体成员变量在该结构体的偏移
@@ -23,17 +23,45 @@
         (type *)( (char *)__mptr - offsetof(type,member) ); })
 
 /**
- * 单向链表
+ * 双向循环链表
  */
 struct list_head
 {
-    struct list_head *next;
+    struct list_head *next, *prev;
 };
+
+#define INIT_LIST_HEAD(ptr)  \
+    do                       \
+    {                        \
+        (ptr)->next = (ptr); \
+        (ptr)->prev = (ptr); \
+    } while (0)
+
+static inline void __list_add(struct list_head *new,
+                              struct list_head *prev,
+                              struct list_head *next)
+{
+    next->prev = new;
+    new->next = next;
+    new->prev = prev;
+    prev->next = new;
+}
 
 static inline void list_add(struct list_head *new, struct list_head *head)
 {
-    new->next = head->next;
-    head->next = new;
+    __list_add(new, head, head->next);
+}
+
+static inline void list_add_tail(struct list_head *new, struct list_head *head)
+{
+    __list_add(new, head->prev, head);
+}
+
+static inline void list_del(struct list_head *entry)
+{
+    entry->next->prev = entry->prev;
+    entry->prev->next = entry->next;
+    INIT_LIST_HEAD(entry);
 }
 
 /**

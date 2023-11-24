@@ -2,7 +2,7 @@
 #include "def.h"
 #include "syscall.h"
 
-usize syscall(usize id, usize args[3], struct TrapContext *context)
+usize syscall(usize id, usize args[3])
 {
     switch (id)
     {

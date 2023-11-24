@@ -8,6 +8,7 @@ struct Segment;
 struct MemoryMap;
 struct TrapContext;
 struct TaskContext;
+struct Task;
 enum SegmentType;
 
 /* buddy_system_allocator.c */
@@ -17,7 +18,7 @@ void *buddy_alloc(struct Buddy *, uint64);
 void buddy_dealloc(struct Buddy *, void *, uint64);
 
 /* elf.c */
-struct MemoryMap *new_user_mapping(char *);
+struct MemoryMap *from_elf(char *);
 
 /* kerneltrap.S */
 void __trap_entry();
@@ -33,6 +34,7 @@ void dealloc_frame(usize);
 /* mapping.c */
 struct Segment *new_segment(usize, usize, usize, enum SegmentType);
 void map_segment(usize, struct Segment *, char *, usize);
+void map_pages(usize, usize, usize, int, usize);
 struct MemoryMap *new_kernel_mapping();
 void map_kernel();
 
@@ -47,7 +49,7 @@ void shutdown() __attribute__((noreturn));
 void set_timer(usize);
 
 /* syscall.c */
-usize syscall(usize, usize[3], struct TrapContext *);
+usize syscall(usize, usize[3]);
 
 /* switch.S */
 void __switch(struct TaskContext *, struct TaskContext *);
@@ -56,7 +58,7 @@ void __switch(struct TaskContext *, struct TaskContext *);
 void init_trap();
 
 /* task.c */
-void schedule();
+void add_task(struct Task *);
 void init_task();
 void exit_current();
 

@@ -13,6 +13,7 @@
 #define PTE2PA(pte) ((((usize)pte) & 0x003ffffffffffC00) << 2)
 #define PTE2PPN(pte) ((((usize)pte) & 0x003ffffffffffC00) >> 10)
 #define PPN2PTE(ppn, flags) (((ppn) << 10) | (flags))
+#define PA2PTE(pa, flags) (((pa) >> 12 << 10) | (flags))
 
 // 页表项的 8 个标志位
 #define PAGE_VALID (1 << 0)
@@ -31,14 +32,14 @@ enum SegmentType
 };
 
 typedef usize PageTableEntry;
-typedef PageTableEntry* PageTable;
+typedef PageTableEntry *PageTable;
 
 /**
  * 映射段
  */
 struct Segment
 {
-    // 映射虚拟地址范围
+    // 映射虚拟地址范围 [start_va, end_va)
     usize start_va;
     usize end_va;
     // 映射的权限标志
