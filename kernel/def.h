@@ -22,7 +22,7 @@ struct MemoryMap *from_elf(char *);
 
 /* kerneltrap.S */
 void __trap_entry();
-void __restore(struct TrapContext *);
+void __restore(struct TrapContext *current_trap_cx);
 
 /*  memory.c    */
 void init_memory();
@@ -37,6 +37,7 @@ void map_segment(usize, struct Segment *, char *, usize);
 void map_pages(usize, usize, usize, int, usize);
 struct MemoryMap *new_kernel_mapping();
 void map_kernel();
+void dealloc_memory_map(struct MemoryMap *);
 
 /* printf.c */
 void printf(char *, ...);
@@ -52,7 +53,7 @@ void set_timer(usize);
 usize syscall(usize, usize[3]);
 
 /* switch.S */
-void __switch(struct TaskContext *, struct TaskContext *);
+void __switch(struct TaskContext *current_task_cx, struct TaskContext *next_task_cx);
 
 /*  trap.c */
 void init_trap();

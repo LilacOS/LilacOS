@@ -180,6 +180,21 @@ void activate_pagetable(usize root_ppn)
     asm volatile("sfence.vma" :::);
 }
 
+void dealloc_memory_map(struct MemoryMap *mm)
+{
+    struct Segment *seg;
+    while (!list_empty(&mm->areas))
+    {
+        list_for_each_entry(seg, &mm->areas, list)
+        {
+            list_del(&seg->list);
+            unmap_segment(mm->root_ppn, seg);
+            break;
+        }
+    }
+    dealloc_pagetable(mm->root_ppn);
+}
+
 /**
  * 新建内核地址空间
  */

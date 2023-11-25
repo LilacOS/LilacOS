@@ -8,7 +8,7 @@ __attribute__((weak)) int main()
     return 0;
 }
 
-void _start(uint8 _args, uint8 *_argv)
+void _start()
 {
     main();
     exit();

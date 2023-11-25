@@ -64,6 +64,11 @@ static inline void list_del(struct list_head *entry)
     INIT_LIST_HEAD(entry);
 }
 
+static inline int list_empty(const struct list_head *head)
+{
+    return head->next == head;
+}
+
 /**
  * 获取包含链表 list_head 的结构体
  *

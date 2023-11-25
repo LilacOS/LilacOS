@@ -11,13 +11,42 @@ struct Task *current = NULL;
 struct Task *init = NULL;
 struct TaskContext *idle = NULL;
 
+#define MAX_PID 1024
+static int pids[MAX_PID / 32] = {0};
+
 int alloc_pid()
 {
-    return 0;
+    for (int i = 0; i < MAX_PID / 32; ++i)
+    {
+        if (pids[i] != 0xFFFFFFFF)
+        {
+            for (int j = 0; j < 32; ++j)
+            {
+                if ((pids[i] & (1 << j)) == 0)
+                {
+                    // 标记为已分配
+                    pids[i] |= (1 << j);
+                    return i * 32 + j;
+                }
+            }
+        }
+    }
+    return -1;
 }
 
-void dealloc_pid()
+void dealloc_pid(int pid)
 {
+    if (pid >= 0 && pid < MAX_PID)
+    {
+        int index = pid / 32;
+        int offset = pid % 32;
+        // 标记为未分配
+        pids[index] &= ~(1 << offset);
+    }
+    else
+    {
+        panic("Invalid PID: %d\n", pid);
+    }
 }
 
 /**
@@ -40,18 +69,22 @@ void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp)
  * 初始化 Trap 上下文使其返回用户入口函数
  *
  * @param trap_cx Trap 上下文
- * @param sstatus sstatus 寄存器
  * @param entry 用户入口函数
  * @param user_sp 用户栈栈顶
  * @param kernel_sp 内核栈栈顶
  */
-void goto_app(struct TrapContext *trap_cx, usize sstatus, usize entry,
-              usize user_sp, usize kernel_sp)
+void goto_app(struct TrapContext *trap_cx, usize entry, usize user_sp, usize kernel_sp)
 {
     for (int i = 0; i < 32; ++i)
     {
         trap_cx->x[i] = 0;
     }
+    usize sstatus = r_sstatus();
+    // 设置返回后的特权级为 U-Mode
+    sstatus &= ~SSTATUS_SPP;
+    // 中断使能
+    sstatus |= SSTATUS_SPIE;
+    sstatus &= ~SSTATUS_SIE;
     trap_cx->sstatus = sstatus;
     trap_cx->sepc = entry;
     // 设置用户栈
@@ -77,20 +110,16 @@ struct Task *new_task(char *elf)
     res->kstack = (usize)alloc(KERNEL_STACK_SIZE);
     // 分配映射用户栈
     res->ustack = (usize)alloc(USER_STACK_SIZE);
+    // 将用户栈映射到固定位置
     map_pages(mm->root_ppn, USER_STACK, __pa(res->ustack),
               USER_STACK_SIZE, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
 
-    usize sstatus = r_sstatus();
-    // 设置返回后的特权级为 U-Mode
-    sstatus &= ~SSTATUS_SPP;
-    // 中断使能
-    sstatus |= SSTATUS_SPIE;
-    sstatus &= ~SSTATUS_SIE;
     goto_trap_restore(&res->task_cx, res->kstack + KERNEL_STACK_SIZE);
-    goto_app(&res->trap_cx, sstatus, ((struct ElfHeader *)elf)->entry,
-             res->ustack + USER_STACK_SIZE, res->kstack + KERNEL_STACK_SIZE);
+    goto_app(&res->trap_cx, ((struct ElfHeader *)elf)->entry,
+             USER_STACK + USER_STACK_SIZE, res->kstack + KERNEL_STACK_SIZE);
 
     INIT_LIST_HEAD(&res->list);
+    INIT_LIST_HEAD(&res->children);
     return res;
 }
 
@@ -115,9 +144,12 @@ void schedule()
             if (task->state == Ready)
             {
                 list_del(&task->list);
+                task->state = Running;
+                init->state = Ready;
                 current = task;
-                current->state = Running;
                 __switch(&init->task_cx, &current->task_cx);
+                current = init;
+                init->state = Running;
                 break;
             }
         }
@@ -130,12 +162,16 @@ void schedule()
  */
 void exit_current()
 {
-    dealloc_pid();
-    dealloc((void *)current->kstack, KERNEL_STACK_SIZE);
+    dealloc_pid(current->pid);
     dealloc((void *)current->ustack, USER_STACK_SIZE);
-    dealloc((void *)current, sizeof(struct Task));
+
+    current->state = Exited;
+    // 有问题
+    list_add(&current->children, &init->children);
+    // 进程调度的时候已经将其从调度队列移除，不用再次移除
     // 当进程终止运行时，current 设置为 NULL
     current = NULL;
+    // 使用 idle 作为临时进程上下文辅助切换
     __switch(idle, &init->task_cx);
 }
 
@@ -146,6 +182,7 @@ void init_task()
     init->pid = alloc_pid();
     init->state = Running;
     INIT_LIST_HEAD(&init->list);
+    INIT_LIST_HEAD(&init->children);
 
     for (int i = 0; i < 5; ++i)
     {
