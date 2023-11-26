@@ -24,7 +24,7 @@ struct Task
     struct TaskContext task_cx;
     struct TrapContext trap_cx;
     usize kstack;
-    // ustack 保存用户栈在内核里的地址
+    // ustack 保存用户栈在内核里的虚拟地址
     // 在用户态时会被映射到固定的虚拟地址
     usize ustack;
     struct MemoryMap *mm;

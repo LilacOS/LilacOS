@@ -10,3 +10,23 @@ void putchar(char c)
 {
     sys_call(SYS_putchar, c, 0, 0);
 }
+
+int getpid()
+{
+    return sys_call(SYS_getpid, 0, 0, 0);
+}
+
+int fork()
+{
+    return sys_call(SYS_fork, 0, 0, 0);
+}
+
+int exec(const char *name)
+{
+    return sys_call(SYS_fork, name, 0, 0);
+}
+
+int wait()
+{
+    return sys_call(SYS_wait, 0, 0, 0);
+}

@@ -3,11 +3,21 @@
 #include "consts.h"
 #include "mapping.h"
 
+/**
+ * 以虚拟页号遍历虚拟地址范围
+ *
+ * @param vpn 循环变量
+ * @param start_va 起始虚拟地址（包含）
+ * @param end_va 结束虚拟地址（不包含）
+ */
+#define list_for_va_range(vpn, start_va, end_va) \
+    for (vpn = ((start_va) >> 12); vpn < ((((end_va)-1) >> 12) + 1); ++vpn)
+
 struct MemoryMap *new_mapping()
 {
     struct MemoryMap *res = (struct MemoryMap *)alloc(sizeof(struct MemoryMap));
     res->root_ppn = alloc_frame();
-    res->areas.next = &res->areas;
+    INIT_LIST_HEAD(&res->areas);
     return res;
 }
 
@@ -78,10 +88,8 @@ PageTableEntry *find_entry(usize root_ppn, usize vpn, int flag)
  */
 void map_pages(usize root_ppn, usize start_va, usize start_pa, int size, usize flags)
 {
-    usize start_vpn = start_va >> 12;
-    usize end_vpn = ((start_va + size - 1) >> 12) + 1;
-    usize start_ppn = start_pa >> 12;
-    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    usize vpn, start_ppn = start_pa >> 12;
+    list_for_va_range(vpn, start_va, start_va + size)
     {
         PageTableEntry *entry = find_entry(root_ppn, vpn, 1);
         *entry = PPN2PTE(start_ppn++, flags);
@@ -98,9 +106,8 @@ void map_pages(usize root_ppn, usize start_va, usize start_pa, int size, usize f
  */
 void map_segment(usize root_ppn, struct Segment *segment, char *data, usize len)
 {
-    usize start_vpn = segment->start_va >> 12;
-    usize end_vpn = ((segment->end_va - 1) >> 12) + 1;
-    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    usize vpn;
+    list_for_va_range(vpn, segment->start_va, segment->end_va)
     {
         PageTableEntry *entry = find_entry(root_ppn, vpn, 1);
         if (*entry != 0)
@@ -135,9 +142,8 @@ void unmap_segment(usize root_ppn, struct Segment *segment)
     {
         return;
     }
-    usize start_vpn = segment->start_va >> 12;
-    usize end_vpn = ((segment->end_va - 1) >> 12) + 1;
-    for (usize vpn = start_vpn; vpn < end_vpn; ++vpn)
+    usize vpn;
+    list_for_va_range(vpn, segment->start_va, segment->end_va)
     {
         PageTableEntry *entry = find_entry(root_ppn, vpn, 0);
         if (!entry)
@@ -193,6 +199,35 @@ void dealloc_memory_map(struct MemoryMap *mm)
         }
     }
     dealloc_pagetable(mm->root_ppn);
+}
+
+/**
+ * 复制进程地址空间
+ */
+struct MemoryMap *copy_mm(struct MemoryMap *src)
+{
+    struct MemoryMap *dst = new_mapping();
+    struct Segment *src_seg;
+    list_for_each_entry(src_seg, &src->areas, list)
+    {
+        struct Segment *dst_seg = new_segment(src_seg->start_va, src_seg->end_va,
+                                              src_seg->flags, src_seg->type);
+        map_segment(dst->root_ppn, dst_seg, NULL, 0);
+        if (dst_seg->type == Linear)
+            continue;
+        usize vpn;
+        list_for_va_range(vpn, src_seg->start_va, src_seg->end_va)
+        {
+            char *src_page = (char *)__va(PTE2PA(*find_entry(src->root_ppn, vpn, 0)));
+            char *dst_page = (char *)__va(PTE2PA(*find_entry(dst->root_ppn, vpn, 0)));
+            for (int i = 0; i < PAGE_SIZE; ++i)
+            {
+                dst_page[i] = src_page[i];
+            }
+        }
+        list_add_tail(&dst_seg->list, &dst->areas);
+    }
+    return dst;
 }
 
 /**

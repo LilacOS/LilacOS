@@ -22,7 +22,7 @@ UPROS =						\
 	$U/syscall.o			\
 	$U/entry.o				\
 	$U/printf.o				\
-	$U/hello.o
+	$U/init.o
 
 # 设置交叉编译工具链
 TOOLPREFIX := riscv64-unknown-elf-

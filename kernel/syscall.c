@@ -1,6 +1,9 @@
 #include "types.h"
 #include "def.h"
 #include "syscall.h"
+#include "task.h"
+
+extern struct Task *current;
 
 usize syscall(usize id, usize args[3])
 {
@@ -10,6 +13,14 @@ usize syscall(usize id, usize args[3])
         exit_current();
     case SYS_putchar:
         console_putchar(args[0]);
+        return 0;
+    case SYS_getpid:
+        return current->pid;
+    case SYS_fork:
+        return sys_fork();
+    case SYS_exec:
+        return sys_execve((const char *)args[0]);
+    case SYS_wait:
         return 0;
     default:
         panic("[syscall] Unknown syscall id %d\n", id);

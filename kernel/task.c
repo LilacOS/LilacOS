@@ -14,6 +14,9 @@ struct TaskContext *idle = NULL;
 #define MAX_PID 1024
 static int pids[MAX_PID / 32] = {0};
 
+/**
+ * 分配 pid
+ */
 int alloc_pid()
 {
     for (int i = 0; i < MAX_PID / 32; ++i)
@@ -34,6 +37,9 @@ int alloc_pid()
     return -1;
 }
 
+/**
+ * 释放 pid
+ */
 void dealloc_pid(int pid)
 {
     if (pid >= 0 && pid < MAX_PID)
@@ -124,11 +130,11 @@ struct Task *new_task(char *elf)
 }
 
 /**
- * 添加进程到调度队列中
+ * 添加进程到调度队列队尾中
  */
 void add_task(struct Task *task)
 {
-    list_add(&task->list, &init->list);
+    list_add_tail(&task->list, &init->list);
 }
 
 /**
@@ -156,6 +162,46 @@ void schedule()
     }
 }
 
+int sys_fork()
+{
+    struct Task *child = (struct Task *)alloc(sizeof(struct Task));
+    child->pid = alloc_pid();
+    child->state = Ready;
+    child->kstack = (usize)alloc(KERNEL_STACK_SIZE);
+    child->ustack = (usize)alloc(USER_STACK_SIZE);
+    INIT_LIST_HEAD(&child->list);
+    INIT_LIST_HEAD(&child->children);
+
+    usize kernel_sp = child->kstack + KERNEL_STACK_SIZE;
+    goto_trap_restore(&child->task_cx, kernel_sp);
+    // 复制地址空间
+    child->mm = copy_mm(current->mm);
+    child->task_cx.satp = __satp(child->mm->root_ppn);
+    // 将用户栈映射到固定位置
+    map_pages(child->mm->root_ppn, USER_STACK, __pa(child->ustack),
+              USER_STACK_SIZE, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
+    // 复制用户栈（用户栈虚拟及物理地址均连续）
+    char *src_stack = (char *)current->ustack;
+    char *dst_stack = (char *)child->ustack;
+    for (int i = 0; i < USER_STACK_SIZE; ++i)
+    {
+        dst_stack[i] = src_stack[i];
+    }
+    // 复制 Trap 上下文
+    child->trap_cx = current->trap_cx;
+    child->trap_cx.kernel_sp = kernel_sp;
+    // 子进程返回 0
+    child->trap_cx.x[10] = 0;
+
+    add_task(child);
+    return child->pid;
+}
+
+int sys_execve(const char *name)
+{
+    return 0;
+}
+
 /**
  * 终止当前进程运行
  * 释放进程资源，同时会将 current 设置为 NULL
@@ -166,7 +212,7 @@ void exit_current()
     dealloc((void *)current->ustack, USER_STACK_SIZE);
 
     current->state = Exited;
-    // 有问题
+    // (todo)
     list_add(&current->children, &init->children);
     // 进程调度的时候已经将其从调度队列移除，不用再次移除
     // 当进程终止运行时，current 设置为 NULL
@@ -184,12 +230,9 @@ void init_task()
     INIT_LIST_HEAD(&init->list);
     INIT_LIST_HEAD(&init->children);
 
-    for (int i = 0; i < 5; ++i)
-    {
-        extern void _user_img_start();
-        struct Task *task = new_task((char *)_user_img_start);
-        add_task(task);
-    }
+    extern void _user_img_start();
+    struct Task *task = new_task((char *)_user_img_start);
+    add_task(task);
     printf("***** Init Task *****\n");
     schedule();
 }
