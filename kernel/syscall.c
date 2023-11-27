@@ -18,10 +18,8 @@ usize syscall(usize id, usize args[3])
         return current->pid;
     case SYS_fork:
         return sys_fork();
-    case SYS_exec:
-        return sys_execve((const char *)args[0]);
     case SYS_wait:
-        return 0;
+        return sys_wait();
     default:
         panic("[syscall] Unknown syscall id %d\n", id);
     }

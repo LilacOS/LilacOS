@@ -5,7 +5,7 @@
 #include "trap.h"
 #include "task.h"
 
-extern struct Task *current, *init;
+extern struct Task *current, *idle;
 
 void init_trap()
 {
@@ -37,7 +37,7 @@ void supervisor_timer(struct TrapContext *context)
     set_next_timeout();
     current->state = Ready;
     add_task(current);
-    __switch(&current->task_cx, &init->task_cx);
+    __switch(&current->task_cx, &idle->task_cx);
 }
 
 void fault(struct TrapContext *context, usize scause, usize stval)

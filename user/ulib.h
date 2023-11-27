@@ -10,7 +10,6 @@ void putchar(char);
 void exit();
 int getpid();
 int fork();
-int exec(const char *);
 int wait();
 
 #endif

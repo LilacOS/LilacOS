@@ -28,10 +28,13 @@ struct Task
     // 在用户态时会被映射到固定的虚拟地址
     usize ustack;
     struct MemoryMap *mm;
+    struct Task *parent;
     // 进程链表（调度队列）
     struct list_head list;
     // 儿子节点链表
     struct list_head children;
+    // 兄弟节点链表
+    struct list_head sibling;
 };
 
 #endif

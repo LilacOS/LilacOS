@@ -8,8 +8,10 @@
 
 // 当前运行的进程
 struct Task *current = NULL;
+// 系统启动进程
+struct Task *idle = NULL;
+// 第一个创建的进程
 struct Task *init = NULL;
-struct TaskContext *idle = NULL;
 
 #define MAX_PID 1024
 static int pids[MAX_PID / 32] = {0};
@@ -126,6 +128,7 @@ struct Task *new_task(char *elf)
 
     INIT_LIST_HEAD(&res->list);
     INIT_LIST_HEAD(&res->children);
+    INIT_LIST_HEAD(&res->sibling);
     return res;
 }
 
@@ -134,7 +137,7 @@ struct Task *new_task(char *elf)
  */
 void add_task(struct Task *task)
 {
-    list_add_tail(&task->list, &init->list);
+    list_add_tail(&task->list, &idle->list);
 }
 
 /**
@@ -142,20 +145,20 @@ void add_task(struct Task *task)
  */
 void schedule()
 {
-    while (1)
+    while (!list_empty(&idle->list))
     {
         struct Task *task;
-        list_for_each_entry(task, &init->list, list)
+        list_for_each_entry(task, &idle->list, list)
         {
             if (task->state == Ready)
             {
                 list_del(&task->list);
                 task->state = Running;
-                init->state = Ready;
+                idle->state = Ready;
                 current = task;
-                __switch(&init->task_cx, &current->task_cx);
-                current = init;
-                init->state = Running;
+                __switch(&idle->task_cx, &current->task_cx);
+                current = idle;
+                idle->state = Running;
                 break;
             }
         }
@@ -169,8 +172,10 @@ int sys_fork()
     child->state = Ready;
     child->kstack = (usize)alloc(KERNEL_STACK_SIZE);
     child->ustack = (usize)alloc(USER_STACK_SIZE);
+    child->parent = current;
     INIT_LIST_HEAD(&child->list);
     INIT_LIST_HEAD(&child->children);
+    INIT_LIST_HEAD(&child->sibling);
 
     usize kernel_sp = child->kstack + KERNEL_STACK_SIZE;
     goto_trap_restore(&child->task_cx, kernel_sp);
@@ -193,46 +198,90 @@ int sys_fork()
     // 子进程返回 0
     child->trap_cx.x[10] = 0;
 
+    list_add(&child->sibling, &current->children);
     add_task(child);
     return child->pid;
 }
 
-int sys_execve(const char *name)
+int sys_wait()
 {
-    return 0;
+    int flag = 0;
+    int pid = -1;
+    struct Task *child;
+    while (1)
+    {
+        list_for_each_entry(child, &current->children, sibling)
+        {
+            if (child->state == Exited)
+            { // 回收进程的其余资源
+                pid = child->pid;
+                dealloc_pid(child->pid);
+                dealloc((void *)child->kstack, KERNEL_STACK_SIZE);
+                dealloc_memory_map(child->mm);
+                dealloc((void *)child, sizeof(struct Task));
+                // 将子进程删除
+                list_del(&child->sibling);
+                return pid;
+            }
+            else
+            {
+                flag = 1;
+            }
+        }
+        if (flag)
+        { // 有子进程还没退出，挂起当前进程等待
+            current = Ready;
+            add_task(current);
+            __switch(&current->task_cx, &idle->task_cx);
+        }
+        else
+        { // 所有子进程均退出，返回 -1
+            break;
+        }
+    }
+    return -1;
 }
 
 /**
  * 终止当前进程运行
- * 释放进程资源，同时会将 current 设置为 NULL
+ *
+ * 只释放部分资源，剩余的资源将由 wait 系统调用回收
  */
 void exit_current()
 {
-    dealloc_pid(current->pid);
     dealloc((void *)current->ustack, USER_STACK_SIZE);
-
     current->state = Exited;
-    // (todo)
-    list_add(&current->children, &init->children);
     // 进程调度的时候已经将其从调度队列移除，不用再次移除
-    // 当进程终止运行时，current 设置为 NULL
-    current = NULL;
-    // 使用 idle 作为临时进程上下文辅助切换
-    __switch(idle, &init->task_cx);
+    // 将进程的所有子进程挂到 init 进程上
+    if (current != init && current->parent != init)
+    {
+        while (!list_empty(&current->children))
+        {
+            struct Task *child;
+            list_for_each_entry(child, &current->children, sibling)
+            {
+                list_del(&child->sibling);
+                list_add(&child->sibling, &init->children);
+            }
+        }
+    }
+    __switch(&current->task_cx, &idle->task_cx);
 }
 
 void init_task()
 {
-    idle = (struct TaskContext *)alloc(sizeof(struct TaskContext));
-    init = (struct Task *)alloc(sizeof(struct Task));
-    init->pid = alloc_pid();
-    init->state = Running;
-    INIT_LIST_HEAD(&init->list);
-    INIT_LIST_HEAD(&init->children);
+    idle = (struct Task *)alloc(sizeof(struct Task));
+    idle->pid = alloc_pid();
+    idle->state = Running;
+    INIT_LIST_HEAD(&idle->list);
+    INIT_LIST_HEAD(&idle->children);
+    INIT_LIST_HEAD(&idle->sibling);
+    // 重新映射内核
+    idle->mm = remap_kernel();
 
     extern void _user_img_start();
-    struct Task *task = new_task((char *)_user_img_start);
-    add_task(task);
+    init = new_task((char *)_user_img_start);
+    add_task(init);
     printf("***** Init Task *****\n");
     schedule();
 }

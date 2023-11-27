@@ -186,6 +186,9 @@ void activate_pagetable(usize root_ppn)
     asm volatile("sfence.vma" :::);
 }
 
+/**
+ * 释放进程地址空间
+ */
 void dealloc_memory_map(struct MemoryMap *mm)
 {
     struct Segment *seg;
@@ -283,11 +286,12 @@ struct MemoryMap *new_kernel_mapping()
 }
 
 /**
- * 映射内核
+ * 重新映射内核
  */
-void map_kernel()
+struct MemoryMap *remap_kernel()
 {
     struct MemoryMap *mm = new_kernel_mapping();
     activate_pagetable(mm->root_ppn);
     printf("***** Remap Kernel *****\n");
+    return mm;
 }

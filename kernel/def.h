@@ -36,7 +36,7 @@ struct Segment *new_segment(usize, usize, usize, enum SegmentType);
 void map_segment(usize, struct Segment *, char *, usize);
 void map_pages(usize, usize, usize, int, usize);
 struct MemoryMap *new_kernel_mapping();
-void map_kernel();
+struct MemoryMap *remap_kernel();
 void dealloc_memory_map(struct MemoryMap *);
 struct MemoryMap *copy_mm(struct MemoryMap *);
 
@@ -64,7 +64,7 @@ void add_task(struct Task *);
 void init_task();
 void exit_current();
 int sys_fork();
-int sys_execve(const char *);
+int sys_wait();
 
 /* timer.c */
 void init_timer();

@@ -10,17 +10,16 @@ int main()
         if (!pid)
         {
             printf("Hello world from child, pid = %d\n", getpid());
-            break;
-            // exec("hello");
+            exit();
         }
         else
         {
             printf("Hello world from parent, pid = %d\n", getpid());
         }
     }
-    // while ((pid = wait()) != -1)
-    // {
-    //     printf("Child %d terminated!\n", pid);
-    // }
+    while ((pid = wait()) != -1)
+    {
+        printf("Child %d terminated!\n", pid);
+    }
     return 0;
 }
