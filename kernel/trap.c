@@ -7,10 +7,8 @@
 void init_trap()
 {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
-    extern void __trap_entry();
     w_stvec((usize)__trap_entry | MODE_DIRECT);
     // 初始化时钟中断
-    extern void init_timer();
     init_timer();
     // 监管者模式中断使能
     w_sstatus(r_sstatus() | SSTATUS_SIE);
@@ -26,7 +24,6 @@ void breakpoint(TrapContext *context)
 
 void supervisor_timer(TrapContext *context)
 {
-    extern void set_next_timeout();
     set_next_timeout();
 }
 
