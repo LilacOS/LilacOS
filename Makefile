@@ -2,7 +2,7 @@ K=kernel
 
 OBJS = 						\
 	$K/entry.o				\
-	$K/io.o					\
+	$K/sbi.o				\
 	$K/printf.o				\
 	$K/main.o
 
@@ -34,10 +34,10 @@ QEMUOPTS = -machine virt -bios default -kernel Image -nographic
 all: Image
 
 Image: Kernel
-
-Kernel: $(subst .c,.o,$(wildcard $K/*.c)) $(subst .S,.o,$(wildcard $K/*.S)) $K/*.h $K/*.ld
-	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
 	$(OBJCOPY) $K/Kernel -O binary Image
+
+Kernel: $(OBJS)
+	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
 
 # compile all .c and .S file to .o file
 $K/%.o: $K/%.c $K/%.S

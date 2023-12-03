@@ -7,7 +7,7 @@ SECTIONS
 {
     /* "." 是当前地址 */
     . = BASE_ADDRESS;
-    start = .;
+    skernel = .;
 
     .text : {
         stext = .;
@@ -20,6 +20,7 @@ SECTIONS
     .rodata : {
         srodata = .;
         *(.rodata .rodata.*)
+        *(.srodata .srodata.*)
         . = ALIGN(4K);
         erodata = .;
     }
@@ -27,19 +28,18 @@ SECTIONS
     .data : {
         sdata = .;
         *(.data .data.*)
+        . = ALIGN(4K);
         edata = .;
     }
 
-    .stack : {
-        *(.stack)
-    }
-
     .bss : {
+        sbss_with_stack = .;
+        *(.bss.stack)
         sbss = .;
-        *(.bss .bss.*)
+        *(.sbss .bss .bss.*)
         . = ALIGN(4K);
         ebss = .;
     }
 
-    PROVIDE(end = .);
+    PROVIDE(ekernel = .);
 }
