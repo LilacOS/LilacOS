@@ -37,16 +37,14 @@ static void printptr(usize x)
         console_putchar(digits[x >> (sizeof(usize) * 8 - 4)]);
 }
 
-void printf(char *fmt, ...)
+void __printf(char *fmt, va_list ap)
 {
-    va_list ap;
-    int i, c;
-    char *s;
+    int i;
+    char c, *s;
 
-    if (fmt == 0)
-        panic("null fmt");
+    if (!fmt)
+        panic("[printf] null fmt");
 
-    va_start(ap, fmt);
     for (i = 0; (c = fmt[i] & 0xff) != 0; i++)
     {
         if (c != '%')
@@ -85,10 +83,24 @@ void printf(char *fmt, ...)
     }
 }
 
-void panic(char *s)
+void printf(char *fmt, ...)
 {
-    printf("panic: ");
-    printf(s);
-    printf("\n");
+    if (!fmt)
+        panic("[printf] null fmt");
+    va_list ap;
+    va_start(ap, fmt);
+    __printf(fmt, ap);
+    va_end(ap);
+}
+
+void panic(char *fmt, ...)
+{
+    if (fmt)
+    {
+        va_list ap;
+        va_start(ap, fmt);
+        __printf(fmt, ap);
+        va_end(ap);
+    }
     shutdown();
 }

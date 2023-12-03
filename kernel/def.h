@@ -23,7 +23,7 @@ void map_kernel();
 
 /* printf.c */
 void printf(char *, ...);
-void panic(char *) __attribute__((noreturn));
+void panic(char *, ...) __attribute__((noreturn));
 
 /*  sbi.c    */
 void console_putchar(usize c);
