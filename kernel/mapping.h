@@ -3,47 +3,59 @@
 
 #include "types.h"
 #include "consts.h"
+#include "list.h"
 
 #define __va(pa) ((pa) + KERNEL_MAP_OFFSET)
-#define __pa(va) ((va) - KERNEL_MAP_OFFSET)
-#define pte_to_pa(pte) (((pte) & 0x003ffffffffffC00) << 2)
-
-typedef usize PageTableEntry;
-
-typedef struct
-{
-    PageTableEntry entries[PAGE_SIZE >> 3];
-} PageTable;
+#define __pa(va) ((va)-KERNEL_MAP_OFFSET)
+#define __vpn(ppn) ((ppn) + KERNEL_PAGE_OFFSET)
+#define __ppn(vpn) ((vpn)-KERNEL_PAGE_OFFSET)
+#define __satp(ppn) ((ppn) | (8L << 60))
+#define PTE2PA(pte) ((((usize)pte) & 0x003ffffffffffC00) << 2)
+#define PTE2PPN(pte) ((((usize)pte) & 0x003ffffffffffC00) >> 10)
+#define PPN2PTE(ppn, flags) (((ppn) << 10) | (flags))
+#define PA2PTE(pa, flags) (((pa) >> 12 << 10) | (flags))
 
 // 页表项的 8 个标志位
-#define VALID       1 << 0
-#define READABLE    1 << 1
-#define WRITABLE    1 << 2
-#define EXECUTABLE  1 << 3
-#define USER        1 << 4
-#define GLOBAL      1 << 5
-#define ACCESSED    1 << 6
-#define DIRTY       1 << 7
+#define PAGE_VALID (1 << 0)
+#define PAGE_READ (1 << 1)
+#define PAGE_WRITE (1 << 2)
+#define PAGE_EXEC (1 << 3)
+#define PAGE_USER (1 << 4)
+#define PAGE_GLOBAL (1 << 5)
+#define PAGE_ACCESS (1 << 6)
+#define PAGE_DIRTY (1 << 7)
+
+enum SegmentType
+{
+    Linear,
+    Framed,
+};
+
+typedef usize PageTableEntry;
+typedef PageTableEntry *PageTable;
 
 /**
- * 映射片段，描述一个映射的行为
+ * 映射段
  */
-typedef struct
+struct Segment
 {
-    // 映射虚拟地址范围
+    // 映射虚拟地址范围 [start_va, end_va)
     usize start_va;
     usize end_va;
     // 映射的权限标志
     usize flags;
-} Segment;
+    enum SegmentType type;
+    struct list_head list;
+};
 
 /**
- * 页表，某个进程的内存映射关系
+ * 进程地址空间
  */
-typedef struct
+struct MemoryMap
 {
     // 根页表的物理页号
     usize root_ppn;
-} Mapping;
+    struct list_head areas;
+};
 
 #endif

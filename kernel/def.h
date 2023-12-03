@@ -22,7 +22,7 @@ usize alloc_frame();
 void dealloc_frame(usize ppn);
 
 /* mapping.c */
-void map_kernel();
+struct MemoryMap *remap_kernel();
 
 /* printf.c */
 void printf(char *, ...);

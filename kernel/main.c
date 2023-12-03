@@ -49,6 +49,6 @@ void main()
     init_trap();
     init_memory();
     test_alloc();
-    map_kernel();
+    remap_kernel();
     shutdown();
 }
