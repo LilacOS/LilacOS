@@ -5,7 +5,7 @@ OBJS = 								\
 	$K/entry.o						\
 	$K/kerneltrap.o					\
 	$K/switch.o						\
-	$K/linkuser.o					\
+	$K/linkfs.o						\
 	$K/sbi.o						\
 	$K/printf.o						\
 	$K/trap.o						\
@@ -16,13 +16,17 @@ OBJS = 								\
 	$K/task.o						\
 	$K/syscall.o					\
 	$K/elf.o						\
+	$K/fs.o							\
 	$K/main.o
 
-UPROS =						\
+UPROSBASE =					\
 	$U/syscall.o			\
 	$U/entry.o				\
-	$U/printf.o				\
-	$U/init.o
+	$U/printf.o
+
+UPROS = 			\
+	init			\
+	hello
 
 # 设置交叉编译工具链
 TOOLPREFIX := riscv64-unknown-elf-
@@ -57,9 +61,15 @@ Image: Kernel
 Kernel: User $(OBJS)
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
 
-User: $(UPROS)
-	$(LD) $(LDFLAGS) -o $U/User $(UPROS)
-	cp $U/User User
+User: buildfs $(UPROSBASE) $(patsubst %,$U/%.o,$(UPROS))
+	mkdir -p rootfs/bin
+	for file in $(UPROS); do											\
+		$(LD) $(LDFLAGS) -o rootfs/bin/$$file $(UPROSBASE) $U/$$file.o;	\
+	done
+	./mkfs
+
+buildfs:
+	gcc -I. tool/mkfs.c -o mkfs
 
 # compile all .c file to .o file
 $K/%.o: $K/%.c
@@ -73,6 +83,8 @@ $U/%.o: $U/%.c
 
 clean:
 	rm -f */*.d */*.o $K/Kernel Image Image.asm $U/User User
+	rm -rf rootfs
+	rm -f mkfs fs.img
 	
 asm: Kernel
 	$(OBJDUMP) -S $K/Kernel > Image.asm

@@ -7,4 +7,7 @@ user/*.d
 user/*.o
 user/User
 User
+rootfs/*
+mkfs
+fs.img
 .gdb_history

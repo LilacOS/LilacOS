@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "elf.h"
 #include "mapping.h"
+#include "fs.h"
 
 // 当前运行的进程
 struct Task *current = NULL;
@@ -279,9 +280,18 @@ void init_task()
     // 重新映射内核
     idle->mm = remap_kernel();
 
-    extern void _user_img_start();
-    init = new_task((char *)_user_img_start);
+    // extern void _user_img_start();
+    // init = new_task((char *)_user_img_start);
+    // add_task(init);
+
+    // 从文件系统中读取 elf 文件
+    struct Inode *init_inode = lookup(0, "/bin/init");
+    char *buf = (char *)alloc(init_inode->size);
+    readall(init_inode, buf);
+    init = new_task(buf);
     add_task(init);
+    dealloc(buf, init_inode->size);
+
     printf("***** Init Task *****\n");
     schedule();
 }

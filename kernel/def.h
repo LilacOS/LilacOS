@@ -9,6 +9,7 @@ struct MemoryMap;
 struct TrapContext;
 struct TaskContext;
 struct Task;
+struct Inode;
 enum SegmentType;
 
 /* buddy_system_allocator.c */
@@ -20,11 +21,16 @@ void buddy_dealloc(struct Buddy *, void *, uint64);
 /* elf.c */
 struct MemoryMap *from_elf(char *);
 
+/* fs.c */
+void init_fs();
+struct Inode *lookup(struct Inode *, char *);
+void readall(struct Inode *, char *);
+
 /* kerneltrap.S */
 void __trap_entry();
 void __restore(struct TrapContext *current_trap_cx);
 
-/*  memory.c    */
+/* memory.c */
 void init_memory();
 void *alloc(usize);
 void dealloc(void *, usize);
@@ -44,7 +50,7 @@ struct MemoryMap *copy_mm(struct MemoryMap *);
 void printf(char *, ...);
 void panic(char *, ...) __attribute__((noreturn));
 
-/*  sbi.c    */
+/* sbi.c */
 void console_putchar(usize);
 usize console_getchar();
 void shutdown() __attribute__((noreturn));
@@ -56,7 +62,7 @@ usize syscall(usize, usize[3]);
 /* switch.S */
 void __switch(struct TaskContext *current_task_cx, struct TaskContext *next_task_cx);
 
-/*  trap.c */
+/* trap.c */
 void init_trap();
 
 /* task.c */
