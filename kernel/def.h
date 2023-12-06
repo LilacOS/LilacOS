@@ -24,7 +24,7 @@ struct MemoryMap *from_elf(char *);
 /* fs.c */
 void init_fs();
 struct Inode *lookup(struct Inode *, char *);
-void readall(struct Inode *, char *);
+int readall(struct Inode *, char *);
 
 /* kerneltrap.S */
 void __trap_entry();

@@ -6,255 +6,195 @@
 #include "kernel/types.h"
 #include "kernel/fs.h"
 
-// 该程序用于将 rootfs 打包成一个 SimpleFS 镜像文件
+/* 该程序用于将 rootfs 打包成一个 SimpleFS 镜像文件 */
+// ---------------------------------------------------
+// |            |         |            |             |
+// | superblock | freemap | root inode | other block |
+// |            |         |            |             |
+// ---------------------------------------------------
 
-// 总块数 256 块，大小为 1M
-#define BLOCK_NUM 256
-// Freemap 块的个数
-#define FREEMAP_NUM 1
+// 总块数 2048 块，大小为 1M
+#define BLOCK_NUM 2048
+#define IMG_SIZE (BLOCK_SIZE * BLOCK_NUM)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-// 最终的镜像数据
-char Image[BLOCK_SIZE * BLOCK_NUM];
+char *Image;
+int unused_blocks = BLOCK_NUM;
 
-// 临时的 freemap，最后需要写入 Image，此时一个 char 代表一块
-char freemap[BLOCK_NUM];
-uint32 freenum = BLOCK_NUM;
-
-// 被打包的文件夹名称
-char *rootdir = "rootfs";
-
-void walk(char *dirName, struct Inode *nowInode, uint32 nowInodeNum);
-uint64 getBlockAddr(int blockNum);
-int getFreeBlock();
-void copyInodeToBlock(int blockNum, struct Inode *in);
-
-void main()
+static inline void *get_block(int block)
 {
-    // 最开始的几块分别是 超级块，freemap 块 和 root 文件夹所在的 inode
-    freemap[0] = 1;
-    int i;
-    for (i = 0; i < FREEMAP_NUM; i++)
-        freemap[1 + i] = 1;
-    freemap[FREEMAP_NUM + 1] = 1;
-    freenum -= (FREEMAP_NUM + 2);
-
-    // 填充 superblock 信息
-    struct SuperBlock spBlock;
-    spBlock.magic = MAGIC_NUM;
-    spBlock.blocks = BLOCK_NUM;
-    spBlock.freemap_blocks = FREEMAP_NUM;
-    char *info = "SimpleFS By Ziyang";
-    for (i = 0; i < strlen(info); i++)
-    {
-        spBlock.info[i] = info[i];
-    }
-    spBlock.info[i] = '\0';
-
-    // 设置根 inode
-    struct Inode rootInode;
-    rootInode.size = 0;
-    rootInode.type = TYPE_DIR;
-    rootInode.filename[0] = '/';
-    rootInode.filename[1] = '\0';
-    // 递归遍历根文件夹，并设置和填充数据
-
-    walk(rootdir, &rootInode, FREEMAP_NUM + 1);
-
-    spBlock.unused_blocks = freenum;
-
-    // 将超级块写入 Image
-    char *ptr = (char *)getBlockAddr(0), *src = (char *)&spBlock;
-    for (i = 0; i < sizeof(spBlock); i++)
-    {
-        ptr[i] = src[i];
-    }
-
-    // 将 freemap 写入 Image
-    ptr = (char *)getBlockAddr(1);
-    for (i = 0; i < BLOCK_NUM / 8; i++)
-    {
-        char c = 0;
-        int j;
-        for (j = 0; j < 8; j++)
-        {
-            if (freemap[i * 8 + j])
-            {
-                c |= (1 << j);
-            }
-        }
-        *ptr = c;
-        ptr++;
-    }
-
-    // 将 rootInode 写入 Image
-    copyInodeToBlock(FREEMAP_NUM + 1, &rootInode);
-
-    // 将 Image 写到磁盘上
-    FILE *img = fopen("fs.img", "w+b");
-    fwrite(Image, sizeof(Image), 1, img);
-    fflush(img);
-    fclose(img);
+    return (void *)Image + block * BLOCK_SIZE;
 }
 
-// 找到 Image 中对应块的起始地址
-uint64
-getBlockAddr(int blockNum)
+static inline struct Inode *get_inode(int idx)
 {
-    void *addr = (void *)Image;
-    addr += (blockNum * BLOCK_SIZE);
-    return (uint64)addr;
+    return (struct Inode *)get_block(idx);
 }
 
-// 遍历目标文件夹，并填充 Inode
-// nowInode 为当前文件夹的 Inode，nowInodeNum 为其 Inode 号
-void walk(char *dirName, struct Inode *nowInode, uint32 nowInodeNum)
+/**
+ * 分配空闲块
+ */
+int alloc_free_block()
 {
-    // 打开当前文件夹
-    DIR *dp = opendir(dirName);
-    struct dirent *dirp;
-
-    // 文件夹下第一个文件为其自己
-    nowInode->direct[0] = nowInodeNum;
-    if (!strcmp(dirName, rootdir))
+    int *freemap = (int *)get_block(1);
+    for (int i = 0; i < BLOCK_NUM; ++i)
     {
-        // 若在根目录，则无上一级，上一级文件夹也为其自己
-        nowInode->direct[1] = nowInodeNum;
-    }
-    // 下一个文件的序号
-    int emptyIndex = 2;
-
-    // 遍历当前文件夹下所有文件
-    while ((dirp = readdir(dp)))
-    {
-        if (!strcmp(dirp->d_name, ".") || !strcmp(dirp->d_name, ".."))
-        {
-            // 跳过 . 和 ..
-            continue;
-        }
-        int blockNum;
-        if (dirp->d_type == DT_DIR)
-        {
-            // 文件夹处理，递归遍历
-            struct Inode dinode;
-            dinode.size = 0;
-            dinode.type = TYPE_DIR;
-            int i;
-            for (i = 0; i < strlen(dirp->d_name); i++)
-            {
-                dinode.filename[i] = dirp->d_name[i];
-            }
-            dinode.filename[i] = '\0';
-            blockNum = getFreeBlock();
-            // 文件夹的前两个文件分别为 . 和 ..
-            dinode.direct[0] = blockNum;
-            dinode.direct[1] = nowInodeNum;
-            char *tmp = (char *)malloc(strlen(dirName) + strlen(dirp->d_name) + 1);
-            sprintf(tmp, "%s/%s", dirName, dirp->d_name);
-            walk(tmp, &dinode, blockNum);
-
-            copyInodeToBlock(blockNum, &dinode);
-        }
-        else if (dirp->d_type == DT_REG)
-        {
-            // 普通文件处理
-            struct Inode finode;
-            finode.type = TYPE_FILE;
-            int i;
-            for (i = 0; i < strlen(dirp->d_name); i++)
-            {
-                finode.filename[i] = dirp->d_name[i];
-            }
-            finode.filename[i] = '\0';
-            char *tmp = (char *)malloc(strlen(dirName) + strlen(dirp->d_name) + 1);
-            sprintf(tmp, "%s/%s", dirName, dirp->d_name);
-            // 获取文件信息
-            struct stat buf;
-            stat(tmp, &buf);
-            finode.size = buf.st_size;
-            finode.blocks = (finode.size - 1) / BLOCK_SIZE + 1;
-
-            blockNum = getFreeBlock();
-
-            // 将文件数据复制到对应的块
-            uint32 l = finode.size; // 剩余未拷贝的大小
-            int blockIndex = 0;
-            FILE *fp = fopen(tmp, "rb");
-            while (l)
-            {
-                int ffb = getFreeBlock();
-                char *buffer = (char *)getBlockAddr(ffb);
-                size_t size;
-                if (l > BLOCK_SIZE)
-                    size = BLOCK_SIZE;
-                else
-                    size = l;
-                fread(buffer, size, 1, fp);
-                l -= size;
-                if (blockIndex < 12)
-                {
-                    finode.direct[blockIndex] = ffb;
-                }
-                else
-                {
-                    if (finode.indirect == 0)
-                    {
-                        finode.indirect = getFreeBlock();
-                    }
-                    uint32 *inaddr = (uint32 *)getBlockAddr(finode.indirect);
-                    inaddr[blockIndex - 12] = ffb;
-                }
-                blockIndex++;
-            }
-            fclose(fp);
-            copyInodeToBlock(blockNum, &finode);
-        }
-        else
-        {
-            continue;
-        }
-
-        if (emptyIndex < 12)
-        {
-            nowInode->direct[emptyIndex] = blockNum;
-        }
-        else
-        {
-            if (nowInode->indirect == 0)
-            {
-                nowInode->indirect = getFreeBlock();
-            }
-            uint32 *inaddr = (uint32 *)getBlockAddr(nowInode->indirect);
-            inaddr[emptyIndex - 12] = blockNum;
-        }
-        emptyIndex++;
-    }
-    closedir(dp);
-    nowInode->blocks = emptyIndex;
-}
-
-int getFreeBlock()
-{
-    int i;
-    for (i = 0; i < BLOCK_NUM; i++)
-    {
-        if (!freemap[i])
-        {
-            freemap[i] = 1;
-            freenum--;
+        int index = i / 32;
+        int offset = i % 32;
+        if ((freemap[index] & (1 << offset)) == 0)
+        { // 该块未被分配，进行分配
+            freemap[index] |= (1 << offset);
+            --unused_blocks;
             return i;
         }
     }
-    printf("get free block failed!\n");
-    exit(1);
+    return -1;
 }
 
-void copyInodeToBlock(int blockNum, struct Inode *in)
+/**
+ * 将磁盘块号填入 inode 节点空闲的位置
+ */
+void put_block(int block, struct Inode *inode)
 {
-    char *dst = (char *)getBlockAddr(blockNum);
-    char *src = (char *)in;
-    int i;
-    for (i = 0; i < sizeof(struct Inode); i++)
+    for (int i = 0; i < 12; ++i)
     {
-        dst[i] = src[i];
+        if (!inode->direct[i])
+        {
+            inode->direct[i] = block;
+            return;
+        }
     }
+    if (!inode->indirect)
+    {
+        inode->indirect = alloc_free_block();
+    }
+    uint32 *indirect = (uint32 *)get_block(inode->indirect);
+    for (int i = 0; i < BLOCK_SIZE / sizeof(uint32); ++i)
+    {
+        if (!indirect[i])
+        {
+            indirect[i] = block;
+            return;
+        }
+    }
+}
+
+/**
+ * 递归遍历文件夹，并填充文件夹 inode 节点
+ *
+ * @param idx 文件夹 inode 节点号
+ * @param path 当前文件夹路径
+ */
+void walk(int idx, char *path)
+{
+    // 打开当前文件夹
+    DIR *dir = opendir(path);
+    struct Inode *inode = get_inode(idx);
+    // 文件夹下第一个文件为其自己
+    inode->direct[0] = idx;
+    if (idx == 2)
+    { // 若为根目录，则无上一级，上一级文件夹也为其自己
+        inode->direct[1] = idx;
+    }
+    inode->blocks = 2;
+
+    // 遍历当前文件夹下所有文件
+    struct dirent *entry;
+    int new_idx;
+    struct Inode *new_inode;
+    while ((entry = readdir(dir)))
+    {
+        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+        {
+            continue;
+        }
+        if (entry->d_type == DT_DIR)
+        { // 文件夹处理，递归遍历
+            new_idx = alloc_free_block();
+            new_inode = get_inode(new_idx);
+            new_inode->size = 0;
+            new_inode->type = TYPE_DIR;
+            strcpy(new_inode->filename, entry->d_name);
+            // 前两个文件分别为 . 和 ..
+            new_inode->direct[0] = new_idx;
+            new_inode->direct[1] = idx;
+
+            char new_path[256];
+            sprintf(new_path, "%s/%s", path, entry->d_name);
+            walk(new_idx, new_path);
+        }
+        else if (entry->d_type == DT_REG)
+        { // 普通文件处理
+            new_idx = alloc_free_block();
+            new_inode = get_inode(new_idx);
+            new_inode->type = TYPE_FILE;
+            strcpy(new_inode->filename, entry->d_name);
+            // 获取文件信息
+            char new_path[256];
+            sprintf(new_path, "%s/%s", path, entry->d_name);
+            struct stat buf;
+            stat(new_path, &buf);
+            new_inode->size = buf.st_size;
+            new_inode->blocks = (new_inode->size - 1) / BLOCK_SIZE + 1;
+
+            // 复制文件数据
+            int size = 0;
+            FILE *fp = fopen(new_path, "rb");
+            while (size < buf.st_size)
+            {
+                int block = alloc_free_block();
+                char *data = (char *)get_block(block);
+                int len = MIN(buf.st_size - size, BLOCK_SIZE);
+                fread(data, len, 1, fp);
+                size += len;
+                put_block(block, new_inode);
+            }
+            fclose(fp);
+        }
+        else
+        {
+            continue;
+        }
+        put_block(new_idx, inode);
+        ++(inode->blocks);
+    }
+    closedir(dir);
+}
+
+void main()
+{
+    Image = (char *)malloc(IMG_SIZE);
+    memset(Image, 0, IMG_SIZE);
+
+    // 设置超级块、空闲块位图、根 inode 节点所在磁盘块已被分配
+    if ((alloc_free_block() != 0) || (alloc_free_block() != 1) || (alloc_free_block() != 2))
+    {
+        printf("Error!");
+        exit(1);
+    }
+
+    // 设置根 inode 节点
+    struct Inode *root = (struct Inode *)get_block(2);
+    root->size = 0;
+    root->type = TYPE_DIR;
+    root->filename[0] = '/';
+    root->filename[1] = '\0';
+
+    // 递归遍历根文件夹，并设置和填充数据
+    walk(2, "rootfs");
+
+    // 填充超级块信息
+    struct SuperBlock *sb = (struct SuperBlock *)get_block(0);
+    sb->magic = MAGIC_NUM;
+    sb->blocks = BLOCK_NUM;
+    sb->freemap_blocks = 1;
+    sb->unused_blocks = unused_blocks;
+
+    // 将 Image 写到磁盘上
+    FILE *img = fopen("fs.img", "w+b");
+    fwrite(Image, IMG_SIZE, 1, img);
+    fflush(img);
+    fclose(img);
+
+    free(Image);
 }

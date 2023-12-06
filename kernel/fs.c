@@ -3,141 +3,101 @@
 #include "fs.h"
 #include "string.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 struct Inode *ROOT_INODE;
-char *FREEMAP;
 
-extern void _fs_img_start();
-
-usize getBlockAddr(int blockNum)
+static inline void *get_block(int block)
 {
-    void *addr = (void *)_fs_img_start;
-    addr += (blockNum * BLOCK_SIZE);
-    return (usize)addr;
+    extern void _fs_img_start();
+    return (void *)_fs_img_start + (block * BLOCK_SIZE);
 }
 
 void init_fs()
 {
-    FREEMAP = (char *)getBlockAddr(1);
-    struct SuperBlock *spBlock = (struct SuperBlock *)_fs_img_start;
-    ROOT_INODE = (struct Inode *)getBlockAddr(spBlock->freemap_blocks + 1);
+    struct SuperBlock *sb = get_block(0);
+    ROOT_INODE = (struct Inode *)get_block(1 + sb->freemap_blocks);
+    printf("***** Init FS *****\n");
 }
 
-struct Inode *lookup(struct Inode *node, char *filename)
+/**
+ * 在当前目录下查找文件
+ *
+ * - 若 path 为相对路径且 inode 不为空，则以 inode 为当前目录查找
+ * - 若 path 为相对路径且 inode 为空，则以根目录为当前目录查找
+ * - 若 path 为绝对路径，则忽略 inode
+ */
+struct Inode *lookup(struct Inode *inode, char *path)
 {
-    if (filename[0] == '/')
+    if (path[0] == '\0')
+        return inode;
+    if (path[0] == '/')
     {
-        node = ROOT_INODE;
-        filename++;
+        inode = ROOT_INODE;
+        ++path;
     }
-    if (node == 0)
-        node = ROOT_INODE;
-    if (*filename == '\0')
-        return node;
-    if (node->type != TYPE_DIR)
-        return 0;
-    char cTarget[strlen(filename) + 1];
+    if (!inode)
+        inode = ROOT_INODE;
+    if (inode->type != TYPE_DIR)
+        return NULL;
+
+    // 解析第一个文件名
+    char name[strlen(path) + 1];
     int i = 0;
-    while (*filename != '/' && *filename != '\0')
+    for (; *path != '/' && *path != '\0'; ++path, ++i)
     {
-        cTarget[i] = *filename;
-        filename++;
-        i++;
+        name[i] = *path;
     }
-    cTarget[i] = '\0';
-    if (*filename == '/')
-        filename++;
-    if (!strcmp(".", cTarget))
+    name[i] = '\0';
+    if (*path == '/')
+        ++path;
+
+    if (!strcmp(".", name))
     {
-        return lookup(node, filename);
+        return lookup(inode, path);
     }
-    if (!strcmp("..", cTarget))
+    if (!strcmp("..", name))
     {
-        struct Inode *upLevel = (struct Inode *)getBlockAddr(node->direct[1]);
-        return lookup(upLevel, filename);
+        struct Inode *parent = (struct Inode *)get_block(inode->direct[1]);
+        return lookup(parent, path);
     }
-    int blockNum = node->blocks;
-    if (blockNum <= 12)
+
+    uint32 *indirect = (uint32 *)get_block(inode->indirect);
+    for (int i = 2; i < inode->blocks; ++i)
     {
-        for (i = 2; i < blockNum; i++)
+        struct Inode *tmp = i < 12 ? (struct Inode *)get_block(inode->direct[i])
+                                   : (struct Inode *)get_block(indirect[i - 12]);
+        if (!strcmp((char *)tmp->filename, name))
         {
-            struct Inode *candidate = (struct Inode *)getBlockAddr(node->direct[i]);
-            if (!strcmp((char *)candidate->filename, cTarget))
-            {
-                return lookup(candidate, filename);
-            }
+            return lookup(tmp, path);
         }
-        return 0;
     }
-    else
-    {
-        for (i = 2; i < 12; i++)
-        {
-            struct Inode *candidate = (struct Inode *)getBlockAddr(node->direct[i]);
-            if (!strcmp((char *)candidate->filename, cTarget))
-            {
-                return lookup(candidate, filename);
-            }
-        }
-        uint32 *indirect = (uint32 *)getBlockAddr(node->indirect);
-        for (i = 12; i < blockNum; i++)
-        {
-            struct Inode *candidate = (struct Inode *)getBlockAddr(indirect[i - 12]);
-            if (!strcmp((char *)candidate->filename, cTarget))
-            {
-                return lookup(candidate, filename);
-            }
-        }
-        return 0;
-    }
+    return NULL;
 }
 
-void copyByteToBuf(char *src, char *dst, int length)
+/**
+ * 将文件 inode 的数据读取到 buf 中
+ */
+int readall(struct Inode *inode, char *buf)
 {
-    int i;
-    for (i = 0; i < length; i++)
-    {
-        dst[i] = src[i];
-    }
-}
-
-void readall(struct Inode *node, char *buf)
-{
-    if (node->type != TYPE_FILE)
+    if (inode->type != TYPE_FILE)
     {
         panic("Cannot read a directory!\n");
     }
-    int l = node->size, b = node->blocks;
-    if (b <= 12)
+
+    int size = 0;
+    uint32 *indirect = (uint32 *)get_block(inode->indirect);
+    for (int i = 0; size < inode->size; ++i)
     {
-        int i;
-        for (i = 0; i < b; i++)
+        char *src = i < 12 ? (char *)get_block(inode->direct[i])
+                           : (char *)get_block(indirect[i - 12]);
+        int len = MIN(inode->size - size, BLOCK_SIZE);
+        for (int j = 0; j < len; ++j)
         {
-            char *src = (char *)getBlockAddr(node->direct[i]);
-            int copySize = l >= 4096 ? 4096 : l;
-            copyByteToBuf(src, buf, copySize);
-            buf += copySize;
-            l -= copySize;
+            buf[j] = src[j];
         }
+        buf += len;
+        size += len;
     }
-    else
-    {
-        int i;
-        for (i = 0; i < 12; i++)
-        {
-            char *src = (char *)getBlockAddr(node->direct[i]);
-            int copySize = l >= 4096 ? 4096 : l;
-            copyByteToBuf(src, buf, copySize);
-            buf += copySize;
-            l -= copySize;
-        }
-        uint32 *indirect = (uint32 *)getBlockAddr(node->indirect);
-        for (i = 0; i < b - 12; i++)
-        {
-            char *src = (char *)getBlockAddr(indirect[i]);
-            int copySize = l >= 4096 ? 4096 : l;
-            copyByteToBuf(src, buf, copySize);
-            buf += copySize;
-            l -= copySize;
-        }
-    }
+    return size;
 }
