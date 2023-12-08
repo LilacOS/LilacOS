@@ -29,6 +29,8 @@ void syscall_handle(struct TrapContext *context)
     usize ret = syscall(
         context->x[17],
         (usize[]){context->x[10], context->x[11], context->x[12]});
+    // 可能调用 exec 系统调用导致上下文被替换
+    context = &current->trap_cx;
     context->x[10] = ret;
 }
 
@@ -65,5 +67,7 @@ void trap_handle(struct TrapContext *context, usize scause, usize stval)
         fault(context, scause, stval);
         break;
     }
+    // 可能调用 exec 系统调用导致上下文被替换
+    context = &current->trap_cx;
     __restore(context);
 }

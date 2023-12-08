@@ -45,6 +45,8 @@ struct MemoryMap *new_kernel_mapping();
 struct MemoryMap *remap_kernel();
 void dealloc_memory_map(struct MemoryMap *);
 struct MemoryMap *copy_mm(struct MemoryMap *);
+void activate_pagetable(usize);
+usize translate(usize, usize);
 
 /* printf.c */
 void printf(char *, ...);
@@ -71,6 +73,7 @@ void init_task();
 void exit_current();
 int sys_fork();
 int sys_wait();
+int sys_exec(char *);
 
 /* timer.c */
 void init_timer();

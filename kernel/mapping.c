@@ -78,6 +78,15 @@ PageTableEntry *find_entry(usize root_ppn, usize vpn, int flag)
 }
 
 /**
+ * 将用户态虚拟地址转换为内核态虚拟地址
+ */
+usize translate(usize root_ppn, usize va)
+{
+    usize pa = PTE2PA(*find_entry(root_ppn, va >> 12, 0)) | (va & 0xfff);
+    return __va(pa);
+}
+
+/**
  * 将虚拟地址映射为物理地址
  *
  * @param root_ppn 根页表物理地址

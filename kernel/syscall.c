@@ -20,6 +20,8 @@ usize syscall(usize id, usize args[3])
         return sys_fork();
     case SYS_wait:
         return sys_wait();
+    case SYS_exec:
+        return sys_exec((char *)args[0]);
     default:
         panic("[syscall] Unknown syscall id %d\n", id);
     }

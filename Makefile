@@ -64,7 +64,7 @@ Kernel: User $(OBJS)
 User: buildfs $(UPROSBASE) $(patsubst %,$U/%.o,$(UPROS))
 	mkdir -p rootfs/bin
 	for file in $(UPROS); do											\
-		$(LD) $(LDFLAGS) -o rootfs/bin/$$file $(UPROSBASE) $U/$$file.o;	\
+		$(LD) $(LDFLAGS) -T $U/linker.ld -o rootfs/bin/$$file $(UPROSBASE) $U/$$file.o;	\
 	done
 	./mkfs
 

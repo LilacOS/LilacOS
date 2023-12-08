@@ -243,6 +243,36 @@ int sys_wait()
     return -1;
 }
 
+int sys_exec(char *path)
+{
+    struct Inode *inode = lookup(NULL, (char *)translate(current->mm->root_ppn, (usize)path));
+    char *buf = (char *)alloc(inode->size);
+    readall(inode, buf);
+    struct MemoryMap *mm = from_elf(buf);
+
+    // 激活新页表
+    activate_pagetable(mm->root_ppn);
+    // 替换进程地址空间
+    struct MemoryMap *old_mm = current->mm;
+    current->mm = mm;
+    dealloc_memory_map(old_mm);
+    current->task_cx.satp = __satp(mm->root_ppn);
+
+    // 重新分配映射用户栈
+    // 内核栈使用原来的内核栈即可
+    dealloc((void *)current->ustack, USER_STACK_SIZE);
+    current->ustack = (usize)alloc(USER_STACK_SIZE);
+    // 将用户栈映射到固定位置
+    map_pages(mm->root_ppn, USER_STACK, __pa(current->ustack),
+              USER_STACK_SIZE, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
+
+    goto_app(&current->trap_cx, ((struct ElfHeader *)buf)->entry,
+             USER_STACK + USER_STACK_SIZE, current->kstack + KERNEL_STACK_SIZE);
+
+    dealloc(buf, inode->size);
+    return 0;
+}
+
 /**
  * 终止当前进程运行
  *

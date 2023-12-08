@@ -25,3 +25,8 @@ int wait()
 {
     return sys_call(SYS_wait, 0, 0, 0);
 }
+
+int exec(char *path)
+{
+    return sys_call(SYS_exec, (usize)path, 0, 0);
+}

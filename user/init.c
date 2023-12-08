@@ -9,8 +9,7 @@ int main()
         pid = fork();
         if (!pid)
         {
-            printf("Hello world from child, pid = %d\n", getpid());
-            exit();
+            exec("/bin/hello\0");
         }
         else
         {

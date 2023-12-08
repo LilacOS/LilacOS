@@ -50,6 +50,10 @@ struct MemoryMap *from_elf(char *elf)
         }
         usize flags = convert_flags(p_header->flags);
         usize start_va = p_header->vaddr, end_va = start_va + p_header->memsz;
+        if (start_va == end_va)
+        {
+            continue;
+        }
         struct Segment *segment = new_segment(start_va, end_va, flags, Framed);
         char *data = (char *)((usize)elf + p_header->off);
         map_segment(res->root_ppn, segment, data, p_header->memsz);

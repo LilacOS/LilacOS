@@ -6,5 +6,6 @@
 #define SYS_getpid 2
 #define SYS_fork 3
 #define SYS_wait 4
+#define SYS_exec 5
 
 #endif

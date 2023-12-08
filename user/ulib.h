@@ -11,5 +11,6 @@ void exit();
 int getpid();
 int fork();
 int wait();
+int exec(char *);
 
 #endif
