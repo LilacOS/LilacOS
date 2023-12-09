@@ -58,7 +58,7 @@ Kernel: User $(OBJS)
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/Kernel $(OBJS)
 
 User: $(UPROS)
-	$(LD) $(LDFLAGS) -o $U/User $(UPROS)
+	$(LD) $(LDFLAGS) -T $U/linker.ld -o $U/User $(UPROS)
 	cp $U/User User
 
 # compile all .c file to .o file

@@ -213,14 +213,14 @@ int sys_wait()
         list_for_each_entry(child, &current->children, sibling)
         {
             if (child->state == Exited)
-            { // 回收进程的其余资源
+            { // 将子进程删除
+                list_del(&child->sibling);
+                // 回收进程的其余资源
                 pid = child->pid;
                 dealloc_pid(child->pid);
                 dealloc((void *)child->kstack, KERNEL_STACK_SIZE);
                 dealloc_memory_map(child->mm);
                 dealloc((void *)child, sizeof(struct Task));
-                // 将子进程删除
-                list_del(&child->sibling);
                 return pid;
             }
             else
@@ -230,7 +230,7 @@ int sys_wait()
         }
         if (flag)
         { // 有子进程还没退出，挂起当前进程等待
-            current = Ready;
+            current->state = Ready;
             add_task(current);
             __switch(&current->task_cx, &idle->task_cx);
         }
