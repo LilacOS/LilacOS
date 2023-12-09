@@ -9,7 +9,7 @@ int main()
         pid = fork();
         if (!pid)
         {
-            exec("/bin/hello\0");
+            exec("hello\0");
         }
         else
         {
