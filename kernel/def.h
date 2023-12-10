@@ -46,7 +46,6 @@ struct MemoryMap *remap_kernel();
 void dealloc_memory_map(struct MemoryMap *);
 struct MemoryMap *copy_mm(struct MemoryMap *);
 void activate_pagetable(usize);
-usize translate(usize, usize);
 
 /* printf.c */
 void printf(char *, ...);

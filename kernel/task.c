@@ -245,7 +245,7 @@ int sys_wait()
 
 int sys_exec(char *path)
 {
-    struct Inode *inode = lookup(NULL, (char *)translate(current->mm->root_ppn, (usize)path));
+    struct Inode *inode = lookup(NULL, path);
     char *buf = (char *)alloc(inode->size);
     readall(inode, buf);
     struct MemoryMap *mm = from_elf(buf);

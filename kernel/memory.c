@@ -2,6 +2,7 @@
 #include "consts.h"
 #include "buddy_system_allocator.h"
 #include "mapping.h"
+#include "riscv.h"
 
 static struct Buddy allocator;
 
@@ -67,5 +68,7 @@ void dealloc_frame(usize ppn)
 void init_memory()
 {
     init_allocator();
+    // 打开 sstatus 的 SUM 位，允许内核访问用户内存
+    w_sstatus(r_sstatus() | SSTATUS_SUM);
     printf("***** Init Memory *****\n");
 }
