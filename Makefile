@@ -31,6 +31,13 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
+# 适配 D1
+ifeq ($(filter D1,$(MAKECMDGOALS)),D1)
+	CFLAGS += -DD1
+else
+	CFLAGS += -DQEMU
+endif
+
 # ld 链接选项
 LDFLAGS = -z max-page-size=4096
 
@@ -60,6 +67,13 @@ asm: Kernel
 
 qemu: Image
 	$(QEMU) $(QEMUOPTS)
+
+D1: Image
+	xfel version
+	xfel ddr d1
+	xfel write 0x80000000 tool/opensbi-d1.bin
+	xfel write 0x80200000 Image
+	xfel exec 0x80000000
 
 gdbserver: Image
 	$(QEMU) $(QEMUOPTS) -s -S

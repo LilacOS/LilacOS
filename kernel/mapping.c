@@ -88,6 +88,9 @@ void map_segment(usize root_ppn, struct Segment *segment, char *data,
             panic("[map_segment] Virtual address already mapped!\n");
         }
         usize ppn = segment->type == Linear ? __ppn(vpn) : alloc_frame();
+        #ifdef D1
+            segment->flags |= PAGE_ACCESS | PAGE_DIRTY;
+        #endif
         *entry = PPN2PTE(ppn, segment->flags);
         if (data) { // 复制数据到目标位置
             char *dst = (char *)__va(ppn << 12);
