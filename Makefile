@@ -54,3 +54,9 @@ asm: Kernel
 
 qemu: Image
 	$(QEMU) $(QEMUOPTS)
+
+gdbserver: Image
+	$(QEMU) $(QEMUOPTS) -s -S
+
+gdbclient:
+	gdb-multiarch -ex 'file $K/Kernel' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
