@@ -31,7 +31,7 @@ void syscall_handle(struct TrapContext *context) {
     context->x[10] = ret;
 }
 
-void supervisor_timer(struct TrapContext *context) {
+void supervisor_timer() {
     set_next_timeout();
     current->state = Ready;
     add_task(current);
@@ -52,7 +52,7 @@ void trap_handle(struct TrapContext *context, usize scause, usize stval) {
         syscall_handle(context);
         break;
     case SUPERVISOR_TIMER:
-        supervisor_timer(context);
+        supervisor_timer();
         break;
     default:
         fault(context, scause, stval);

@@ -12,9 +12,9 @@
 
     .section .text
     .globl __trap_entry
-    # 中断处理函数需要 4 字节对齐
+    # 异常处理函数需要 4 字节对齐
     .balign 4
-# 全局中断处理，保存 Trap 上下文并跳转到 trap_handle() 处
+# 异常处理入口，保存 Trap 上下文并跳转到 trap_handle() 处
 # sscratch 保存 Trap 上下文的地址
 __trap_entry:
     csrrw sp, sscratch, sp
@@ -44,7 +44,7 @@ __trap_entry:
     csrr a2, stval
     # 加载内核栈
     ld sp, 34*8(sp)
-    j trap_handle
+    call trap_handle
 
 
     .globl __restore
