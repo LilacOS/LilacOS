@@ -43,7 +43,7 @@ void add_to_buddy(struct Buddy *buddy, void *start, void *end) {
  * @return 内存块的起始地址
  */
 void *buddy_alloc(struct Buddy *buddy, uint64 size) {
-    uint64 adjust_size = MAX(next_power_of_two(size), 64);
+    uint64 adjust_size = MAX(next_power_of_two(size), 8);
     int order = get_order(adjust_size);
     for (int i = order; i < MAX_ORDER; ++i) {
         if (buddy->free_list[i]) {
@@ -67,7 +67,7 @@ void *buddy_alloc(struct Buddy *buddy, uint64 size) {
  * @param size 内存块的大小，会被调整为2的幂次方
  */
 void buddy_dealloc(struct Buddy *buddy, void *block, uint64 size) {
-    uint64 adjust_size = MAX(next_power_of_two(size), 64);
+    uint64 adjust_size = MAX(next_power_of_two(size), 8);
     int order = get_order(adjust_size);
     PUSH(buddy, (uint64 *)block, order);
     uint64 *current_block = block;

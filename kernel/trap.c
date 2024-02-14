@@ -20,7 +20,7 @@ void breakpoint(TrapContext *context) {
     context->sepc += 2;
 }
 
-void supervisor_timer(TrapContext *context) { set_next_timeout(); }
+void supervisor_timer() { set_next_timeout(); }
 
 void fault(TrapContext *context, usize scause, usize stval) {
     printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n", scause,
@@ -34,7 +34,7 @@ void trap_handle(TrapContext *context, usize scause, usize stval) {
         breakpoint(context);
         break;
     case SUPERVISOR_TIMER:
-        supervisor_timer(context);
+        supervisor_timer();
         break;
     default:
         fault(context, scause, stval);
