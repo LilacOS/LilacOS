@@ -12,7 +12,7 @@ void init_allocator() {
 /**
  * 分配内存
  *
- * @param size 分配内存的大小，会被调整到最近的2次幂，且最小为64字节
+ * @param size 分配内存的大小，会被调整到最近的2次幂，且最小为64位
  * @return 内存块的起始地址
  */
 void *alloc(usize size) { return buddy_alloc(&allocator, size); }
