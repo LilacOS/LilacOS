@@ -4,8 +4,7 @@
 
 static char digits[] = "0123456789abcdef";
 
-static void printint(int xx, int base, int sign)
-{
+static void printint(int xx, int base, int sign) {
     char buf[16];
     int i;
     uint x;
@@ -16,8 +15,7 @@ static void printint(int xx, int base, int sign)
         x = xx;
 
     i = 0;
-    do
-    {
+    do {
         buf[i++] = digits[x % base];
     } while ((x /= base) != 0);
 
@@ -28,8 +26,7 @@ static void printint(int xx, int base, int sign)
         console_putchar(buf[i]);
 }
 
-static void printptr(usize x)
-{
+static void printptr(usize x) {
     int i;
     console_putchar('0');
     console_putchar('x');
@@ -37,26 +34,22 @@ static void printptr(usize x)
         console_putchar(digits[x >> (sizeof(usize) * 8 - 4)]);
 }
 
-void __printf(char *fmt, va_list ap)
-{
+void __printf(char *fmt, va_list ap) {
     int i;
     char c, *s;
 
     if (!fmt)
         panic("[printf] null fmt");
 
-    for (i = 0; (c = fmt[i] & 0xff) != 0; i++)
-    {
-        if (c != '%')
-        {
+    for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
+        if (c != '%') {
             console_putchar(c);
             continue;
         }
         c = fmt[++i] & 0xff;
         if (c == 0)
             break;
-        switch (c)
-        {
+        switch (c) {
         case 'd':
             printint(va_arg(ap, int), 10, 1);
             break;
@@ -83,8 +76,7 @@ void __printf(char *fmt, va_list ap)
     }
 }
 
-void printf(char *fmt, ...)
-{
+void printf(char *fmt, ...) {
     if (!fmt)
         panic("[printf] null fmt");
     va_list ap;
@@ -93,10 +85,8 @@ void printf(char *fmt, ...)
     va_end(ap);
 }
 
-void panic(char *fmt, ...)
-{
-    if (fmt)
-    {
+void panic(char *fmt, ...) {
+    if (fmt) {
         va_list ap;
         va_start(ap, fmt);
         __printf(fmt, ap);

@@ -4,8 +4,7 @@
 
 static struct Buddy allocator;
 
-void init_allocator()
-{
+void init_allocator() {
     init_buddy(&allocator);
     add_to_buddy(&allocator, (void *)ekernel, (void *)MEMORY_END);
 }
@@ -16,10 +15,7 @@ void init_allocator()
  * @param size 分配内存的大小，会被调整到最近的2次幂，且最小为64字节
  * @return 内存块的起始地址
  */
-void *alloc(usize size)
-{
-    return buddy_alloc(&allocator, size);
-}
+void *alloc(usize size) { return buddy_alloc(&allocator, size); }
 
 /**
  * 释放内存
@@ -27,8 +23,7 @@ void *alloc(usize size)
  * @param block 释放的内存块
  * @param size block的大小
  */
-void dealloc(void *block, usize size)
-{
+void dealloc(void *block, usize size) {
     buddy_dealloc(&allocator, block, size);
 }
 
@@ -37,11 +32,9 @@ void dealloc(void *block, usize size)
  *
  * @return 物理页帧号
  */
-usize alloc_frame()
-{
+usize alloc_frame() {
     char *page = (char *)alloc(PAGE_SIZE);
-    for (int i = 0; i < PAGE_SIZE; ++i)
-    {
+    for (int i = 0; i < PAGE_SIZE; ++i) {
         page[i] = 0;
     }
     return ((usize)page) >> 12;
@@ -52,13 +45,9 @@ usize alloc_frame()
  *
  * @param ppm 物理页帧号
  */
-void dealloc_frame(usize ppn)
-{
-    dealloc((void *)(ppn << 12), PAGE_SIZE);
-}
+void dealloc_frame(usize ppn) { dealloc((void *)(ppn << 12), PAGE_SIZE); }
 
-void init_memory()
-{
+void init_memory() {
     init_allocator();
     printf("***** Init Memory *****\n");
 }
