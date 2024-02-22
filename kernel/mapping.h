@@ -25,8 +25,7 @@
 #define PAGE_ACCESS (1 << 6)
 #define PAGE_DIRTY (1 << 7)
 
-enum SegmentType
-{
+enum SegmentType {
     Linear,
     Framed,
 };
@@ -37,8 +36,7 @@ typedef PageTableEntry *PageTable;
 /**
  * 映射段
  */
-struct Segment
-{
+struct Segment {
     // 映射虚拟地址范围 [start_va, end_va)
     usize start_va;
     usize end_va;
@@ -51,8 +49,7 @@ struct Segment
 /**
  * 进程地址空间
  */
-struct MemoryMap
-{
+struct MemoryMap {
     // 根页表的物理页号
     usize root_ppn;
     struct list_head areas;

@@ -6,8 +6,7 @@
 /**
  * Trap上下文
  */
-typedef struct
-{
+typedef struct {
     // 32个通用寄存器
     usize x[32];
     // S-Mode 状态寄存器

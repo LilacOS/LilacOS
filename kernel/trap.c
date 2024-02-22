@@ -4,8 +4,7 @@
 #include "riscv.h"
 #include "trap.h"
 
-void init_trap()
-{
+void init_trap() {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
     w_stvec((usize)__trap_entry | MODE_DIRECT);
     // 初始化时钟中断
@@ -15,31 +14,22 @@ void init_trap()
     printf("***** Init Trap *****\n");
 }
 
-void breakpoint(TrapContext *context)
-{
+void breakpoint(TrapContext *context) {
     printf("Breakpoint at %p\n", context->sepc);
     // ebreak 指令长度 2 字节，返回后跳过该条指令
     context->sepc += 2;
 }
 
-void supervisor_timer(TrapContext *context)
-{
-    set_next_timeout();
-}
+void supervisor_timer(TrapContext *context) { set_next_timeout(); }
 
-void fault(TrapContext *context, usize scause, usize stval)
-{
-    printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n",
-           scause,
-           context->sepc,
-           stval);
+void fault(TrapContext *context, usize scause, usize stval) {
+    printf("Unhandled trap!\nscause\t= %p\nsepc\t= %p\nstval\t= %p\n", scause,
+           context->sepc, stval);
     panic("");
 }
 
-void trap_handle(TrapContext *context, usize scause, usize stval)
-{
-    switch (scause)
-    {
+void trap_handle(TrapContext *context, usize scause, usize stval) {
+    switch (scause) {
     case BREAKPOINT:
         breakpoint(context);
         break;
