@@ -13,10 +13,10 @@
 #define list_for_va_range(vpn, start_va, end_va)                               \
     for (vpn = ((start_va) >> 12); vpn < ((((end_va)-1) >> 12) + 1); ++vpn)
 
-struct MemoryMap *new_mapping() {
+struct MemoryMap *new_memory_map() {
     struct MemoryMap *res = (struct MemoryMap *)alloc(sizeof(struct MemoryMap));
     res->root_ppn = alloc_frame();
-    INIT_LIST_HEAD(&res->areas);
+    INIT_LIST_HEAD(&res->segment_list);
     return res;
 }
 
@@ -55,6 +55,8 @@ PageTableEntry *find_entry(usize root_ppn, usize vpn, int flag) {
     usize *levels = get_vpn_levels(vpn);
     PageTableEntry *pte = &(root[levels[2]]);
     for (int i = 1; i >= 0; --i) {
+        // todo 页表不存在是否使用 valid 位判断更合理，
+        // 这里是由于分配物理页时都将数据清零了所以没有问题
         if (*pte == 0) {
             if (flag) { // 页表不存在，创建新页表
                 usize new_ppn = alloc_frame();
@@ -171,8 +173,8 @@ void activate_pagetable(usize root_ppn) {
  */
 void dealloc_memory_map(struct MemoryMap *mm) {
     struct Segment *seg;
-    while (!list_empty(&mm->areas)) {
-        list_for_each_entry(seg, &mm->areas, list) {
+    while (!list_empty(&mm->segment_list)) {
+        list_for_each_entry(seg, &mm->segment_list, list) {
             list_del(&seg->list);
             unmap_segment(mm->root_ppn, seg);
             break;
@@ -211,8 +213,8 @@ struct MemoryMap *copy_mm(struct MemoryMap *src) {
 /**
  * 新建内核地址空间
  */
-struct MemoryMap *new_kernel_mapping() {
-    struct MemoryMap *mm = new_mapping();
+struct MemoryMap *new_kernel_memory_map() {
+    struct MemoryMap *mm = new_memory_map();
 
     // .text 段，r-x
     struct Segment *text = new_segment(
@@ -243,11 +245,11 @@ struct MemoryMap *new_kernel_mapping() {
     map_segment(mm->root_ppn, other, NULL, 0);
 
     // 连接各个映射区域
-    list_add(&other->list, &mm->areas);
-    list_add(&bss->list, &mm->areas);
-    list_add(&data->list, &mm->areas);
-    list_add(&rodata->list, &mm->areas);
-    list_add(&text->list, &mm->areas);
+    list_add(&other->list, &mm->segment_list);
+    list_add(&bss->list, &mm->segment_list);
+    list_add(&data->list, &mm->segment_list);
+    list_add(&rodata->list, &mm->segment_list);
+    list_add(&text->list, &mm->segment_list);
 
     return mm;
 }
@@ -256,7 +258,7 @@ struct MemoryMap *new_kernel_mapping() {
  * 重新映射内核
  */
 struct MemoryMap *remap_kernel() {
-    struct MemoryMap *mm = new_kernel_mapping();
+    struct MemoryMap *mm = new_kernel_memory_map();
     activate_pagetable(mm->root_ppn);
     printf("***** Remap Kernel *****\n");
     return mm;
