@@ -52,7 +52,7 @@ struct Segment {
 struct MemoryMap {
     // 根页表的物理页号
     usize root_ppn;
-    struct list_head areas;
+    struct list_head segment_list;
 };
 
 #endif

@@ -7,7 +7,7 @@ _start:
     li t1, 0xffffffff00000000
     sub t0, t0, t1
     srli t0, t0, 12
-    # 设置使用 SV39
+    # 设置使用 Sv39
     li t1, (8 << 60)
     or t0, t0, t1
     # 写入 satp 并刷新 TLB
@@ -38,9 +38,9 @@ bootstacktop:
 bootpagetable:
     .quad 0
     .quad 0
-    # 第 2 项：0x80000000 -> 0x80000000，0xcf 表示 VRWXAD 均为 1
+    # 第 3 项：0x80000000 -> 0x80000000，0xcf 表示 VRWXAD 均为 1
     .quad (0x80000 << 10) | 0xcf
     .zero 507 * 8
-    # 第 510 项：0xffffffff80000000 -> 0x80000000，0xcf 表示 VRWXAD 均为 1
+    # 第 511 项：0xffffffff80000000 -> 0x80000000，0xcf 表示 VRWXAD 均为 1
     .quad (0x80000 << 10) | 0xcf
     .quad 0
