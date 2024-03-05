@@ -35,7 +35,7 @@ void dealloc_frame(usize);
 struct Segment *new_segment(usize, usize, usize, enum SegmentType);
 void map_segment(usize, struct Segment *, char *, usize);
 void map_pages(usize, usize, usize, int, usize);
-struct MemoryMap *new_kernel_mapping();
+struct MemoryMap *new_kernel_memory_map();
 struct MemoryMap *remap_kernel();
 void dealloc_memory_map(struct MemoryMap *);
 struct MemoryMap *copy_mm(struct MemoryMap *);

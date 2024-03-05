@@ -187,9 +187,9 @@ void dealloc_memory_map(struct MemoryMap *mm) {
  * 复制进程地址空间
  */
 struct MemoryMap *copy_mm(struct MemoryMap *src) {
-    struct MemoryMap *dst = new_mapping();
+    struct MemoryMap *dst = new_memory_map();
     struct Segment *src_seg;
-    list_for_each_entry(src_seg, &src->areas, list) {
+    list_for_each_entry(src_seg, &src->segment_list, list) {
         struct Segment *dst_seg = new_segment(
             src_seg->start_va, src_seg->end_va, src_seg->flags, src_seg->type);
         map_segment(dst->root_ppn, dst_seg, NULL, 0);
@@ -205,7 +205,7 @@ struct MemoryMap *copy_mm(struct MemoryMap *src) {
                 dst_page[i] = src_page[i];
             }
         }
-        list_add_tail(&dst_seg->list, &dst->areas);
+        list_add_tail(&dst_seg->list, &dst->segment_list);
     }
     return dst;
 }
