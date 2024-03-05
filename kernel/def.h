@@ -54,7 +54,8 @@ void set_timer(usize);
 usize syscall(usize, usize[3]);
 
 /* switch.S */
-void __switch(struct TaskContext *current_task_cx, struct TaskContext *next_task_cx);
+void __switch(struct TaskContext *current_task_cx,
+              struct TaskContext *next_task_cx);
 
 /*  trap.c */
 void init_trap();

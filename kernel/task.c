@@ -19,16 +19,11 @@ static int pids[MAX_PID / 32] = {0};
 /**
  * 分配 pid
  */
-int alloc_pid()
-{
-    for (int i = 0; i < MAX_PID / 32; ++i)
-    {
-        if (pids[i] != 0xFFFFFFFF)
-        {
-            for (int j = 0; j < 32; ++j)
-            {
-                if ((pids[i] & (1 << j)) == 0)
-                {
+int alloc_pid() {
+    for (int i = 0; i < MAX_PID / 32; ++i) {
+        if (pids[i] != 0xFFFFFFFF) {
+            for (int j = 0; j < 32; ++j) {
+                if ((pids[i] & (1 << j)) == 0) {
                     // 标记为已分配
                     pids[i] |= (1 << j);
                     return i * 32 + j;
@@ -42,17 +37,13 @@ int alloc_pid()
 /**
  * 释放 pid
  */
-void dealloc_pid(int pid)
-{
-    if (pid >= 0 && pid < MAX_PID)
-    {
+void dealloc_pid(int pid) {
+    if (pid >= 0 && pid < MAX_PID) {
         int index = pid / 32;
         int offset = pid % 32;
         // 标记为未分配
         pids[index] &= ~(1 << offset);
-    }
-    else
-    {
+    } else {
         panic("Invalid PID: %d\n", pid);
     }
 }
@@ -63,12 +54,10 @@ void dealloc_pid(int pid)
  * @param task_cx 进程上下文
  * @param kernel_sp 内核栈栈顶
  */
-void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp)
-{
+void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp) {
     task_cx->ra = (usize)__restore;
     task_cx->sp = kernel_sp;
-    for (int i = 0; i < 12; ++i)
-    {
+    for (int i = 0; i < 12; ++i) {
         task_cx->s[i] = 0;
     }
 }
@@ -81,10 +70,9 @@ void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp)
  * @param user_sp 用户栈栈顶
  * @param kernel_sp 内核栈栈顶
  */
-void goto_app(struct TrapContext *trap_cx, usize entry, usize user_sp, usize kernel_sp)
-{
-    for (int i = 0; i < 32; ++i)
-    {
+void goto_app(struct TrapContext *trap_cx, usize entry, usize user_sp,
+              usize kernel_sp) {
+    for (int i = 0; i < 32; ++i) {
         trap_cx->x[i] = 0;
     }
     usize sstatus = r_sstatus();
@@ -104,8 +92,7 @@ void goto_app(struct TrapContext *trap_cx, usize entry, usize user_sp, usize ker
 /**
  * 创建新进程
  */
-struct Task *new_task(char *elf)
-{
+struct Task *new_task(char *elf) {
     struct Task *res = (struct Task *)alloc(sizeof(struct Task));
     res->pid = alloc_pid();
     res->state = Ready;
@@ -119,8 +106,8 @@ struct Task *new_task(char *elf)
     // 分配映射用户栈
     res->ustack = (usize)alloc(USER_STACK_SIZE);
     // 将用户栈映射到固定位置
-    map_pages(mm->root_ppn, USER_STACK, __pa(res->ustack),
-              USER_STACK_SIZE, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
+    map_pages(mm->root_ppn, USER_STACK, __pa(res->ustack), USER_STACK_SIZE,
+              PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
 
     goto_trap_restore(&res->task_cx, res->kstack + KERNEL_STACK_SIZE);
     goto_app(&res->trap_cx, ((struct ElfHeader *)elf)->entry,
@@ -135,23 +122,16 @@ struct Task *new_task(char *elf)
 /**
  * 添加进程到调度队列队尾中
  */
-void add_task(struct Task *task)
-{
-    list_add_tail(&task->list, &idle->list);
-}
+void add_task(struct Task *task) { list_add_tail(&task->list, &idle->list); }
 
 /**
  * 进程调度
  */
-void schedule()
-{
-    while (!list_empty(&idle->list))
-    {
+void schedule() {
+    while (!list_empty(&idle->list)) {
         struct Task *task;
-        list_for_each_entry(task, &idle->list, list)
-        {
-            if (task->state == Ready)
-            {
+        list_for_each_entry(task, &idle->list, list) {
+            if (task->state == Ready) {
                 list_del(&task->list);
                 task->state = Running;
                 idle->state = Ready;
@@ -165,8 +145,7 @@ void schedule()
     }
 }
 
-int sys_fork()
-{
+int sys_fork() {
     struct Task *child = (struct Task *)alloc(sizeof(struct Task));
     child->pid = alloc_pid();
     child->state = Ready;
@@ -188,8 +167,7 @@ int sys_fork()
     // 复制用户栈（用户栈虚拟及物理地址均连续）
     char *src_stack = (char *)current->ustack;
     char *dst_stack = (char *)child->ustack;
-    for (int i = 0; i < USER_STACK_SIZE; ++i)
-    {
+    for (int i = 0; i < USER_STACK_SIZE; ++i) {
         dst_stack[i] = src_stack[i];
     }
     // 复制 Trap 上下文
@@ -203,17 +181,13 @@ int sys_fork()
     return child->pid;
 }
 
-int sys_wait()
-{
+int sys_wait() {
     int flag = 0;
     int pid = -1;
     struct Task *child;
-    while (1)
-    {
-        list_for_each_entry(child, &current->children, sibling)
-        {
-            if (child->state == Exited)
-            { // 将子进程删除
+    while (1) {
+        list_for_each_entry(child, &current->children, sibling) {
+            if (child->state == Exited) { // 将子进程删除
                 list_del(&child->sibling);
                 // 回收进程的其余资源
                 pid = child->pid;
@@ -222,20 +196,15 @@ int sys_wait()
                 dealloc_memory_map(child->mm);
                 dealloc((void *)child, sizeof(struct Task));
                 return pid;
-            }
-            else
-            {
+            } else {
                 flag = 1;
             }
         }
-        if (flag)
-        { // 有子进程还没退出，挂起当前进程等待
+        if (flag) { // 有子进程还没退出，挂起当前进程等待
             current->state = Ready;
             add_task(current);
             __switch(&current->task_cx, &idle->task_cx);
-        }
-        else
-        { // 所有子进程均退出，返回 -1
+        } else { // 所有子进程均退出，返回 -1
             break;
         }
     }
@@ -247,19 +216,15 @@ int sys_wait()
  *
  * 只释放部分资源，剩余的资源将由 wait 系统调用回收
  */
-void exit_current()
-{
+void exit_current() {
     dealloc((void *)current->ustack, USER_STACK_SIZE);
     current->state = Exited;
     // 进程调度的时候已经将其从调度队列移除，不用再次移除
     // 将进程的所有子进程挂到 init 进程上
-    if (current != init && current->parent != init)
-    {
-        while (!list_empty(&current->children))
-        {
+    if (current != init && current->parent != init) {
+        while (!list_empty(&current->children)) {
             struct Task *child;
-            list_for_each_entry(child, &current->children, sibling)
-            {
+            list_for_each_entry(child, &current->children, sibling) {
                 list_del(&child->sibling);
                 list_add(&child->sibling, &init->children);
             }
@@ -268,8 +233,7 @@ void exit_current()
     __switch(&current->task_cx, &idle->task_cx);
 }
 
-void init_task()
-{
+void init_task() {
     idle = (struct Task *)alloc(sizeof(struct Task));
     idle->pid = alloc_pid();
     idle->state = Running;

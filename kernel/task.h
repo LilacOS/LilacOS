@@ -5,8 +5,7 @@
 #include "list.h"
 #include "context.h"
 
-enum TaskState
-{
+enum TaskState {
     Ready,
     Running,
     Exited,
@@ -15,8 +14,7 @@ enum TaskState
 /**
  * 进程控制块
  */
-struct Task
-{
+struct Task {
     int pid;
     enum TaskState state;
     // 进程与 Trap 上下文必须紧邻放置，在进程切换时

@@ -18,54 +18,49 @@
  * @param type 结构体的类型
  * @param member 该成员在结构体内的变量名
  */
-#define container_of(ptr, type, member) ({			\
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
-        (type *)( (char *)__mptr - offsetof(type,member) ); })
+#define container_of(ptr, type, member)                                        \
+    ({                                                                         \
+        const typeof(((type *)0)->member) *__mptr = (ptr);                     \
+        (type *)((char *)__mptr - offsetof(type, member));                     \
+    })
 
 /**
  * 双向循环链表
  */
-struct list_head
-{
+struct list_head {
     struct list_head *next, *prev;
 };
 
-#define INIT_LIST_HEAD(ptr)  \
-    do                       \
-    {                        \
-        (ptr)->next = (ptr); \
-        (ptr)->prev = (ptr); \
+#define INIT_LIST_HEAD(ptr)                                                    \
+    do {                                                                       \
+        (ptr)->next = (ptr);                                                   \
+        (ptr)->prev = (ptr);                                                   \
     } while (0)
 
-static inline void __list_add(struct list_head *new,
-                              struct list_head *prev,
-                              struct list_head *next)
-{
+static inline void __list_add(struct list_head *new, struct list_head *prev,
+                              struct list_head *next) {
     next->prev = new;
     new->next = next;
     new->prev = prev;
     prev->next = new;
 }
 
-static inline void list_add(struct list_head *new, struct list_head *head)
-{
+static inline void list_add(struct list_head *new, struct list_head *head) {
     __list_add(new, head, head->next);
 }
 
-static inline void list_add_tail(struct list_head *new, struct list_head *head)
-{
+static inline void list_add_tail(struct list_head *new,
+                                 struct list_head *head) {
     __list_add(new, head->prev, head);
 }
 
-static inline void list_del(struct list_head *entry)
-{
+static inline void list_del(struct list_head *entry) {
     entry->next->prev = entry->prev;
     entry->prev->next = entry->next;
     INIT_LIST_HEAD(entry);
 }
 
-static inline int list_empty(const struct list_head *head)
-{
+static inline int list_empty(const struct list_head *head) {
     return head->next == head;
 }
 
@@ -77,8 +72,7 @@ static inline int list_empty(const struct list_head *head)
  * @param member 链表在结构体内的变量名
  * @return 指向结构体的指针
  */
-#define list_entry(ptr, type, member) \
-    container_of(ptr, type, member)
+#define list_entry(ptr, type, member) container_of(ptr, type, member)
 
 /**
  * 遍历结构体链表
@@ -87,9 +81,9 @@ static inline int list_empty(const struct list_head *head)
  * @param head 链表头指针
  * @param member 链表在结构体内的变量名
  */
-#define list_for_each_entry(pos, head, member)                 \
-    for (pos = list_entry((head)->next, typeof(*pos), member); \
-         &pos->member != (head);                               \
+#define list_for_each_entry(pos, head, member)                                 \
+    for (pos = list_entry((head)->next, typeof(*pos), member);                 \
+         &pos->member != (head);                                               \
          pos = list_entry(pos->member.next, typeof(*pos), member))
 
 #endif
