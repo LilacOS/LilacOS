@@ -28,7 +28,7 @@ usize convert_flags(uint32 flags) {
  * @note 不包含用户栈及内核栈
  */
 struct MemoryMap *from_elf(char *elf) {
-    struct MemoryMap *res = new_kernel_mapping();
+    struct MemoryMap *res = new_kernel_memory_map();
     struct ElfHeader *e_header = (struct ElfHeader *)elf;
     // 校验 ELF 头
     if (e_header->magic != ELF_MAGIC) {
@@ -49,7 +49,7 @@ struct MemoryMap *from_elf(char *elf) {
         struct Segment *segment = new_segment(start_va, end_va, flags, Framed);
         char *data = (char *)((usize)elf + p_header->off);
         map_segment(res->root_ppn, segment, data, p_header->memsz);
-        list_add(&segment->list, &res->areas);
+        list_add(&segment->list, &res->segment_list);
     }
     return res;
 }
