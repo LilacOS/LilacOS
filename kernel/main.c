@@ -52,6 +52,6 @@ void main() {
     test_alloc();
     init_fs();
     init_trap();
-    init_task();
+    init_process();
     shutdown();
 }

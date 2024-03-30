@@ -31,24 +31,26 @@ struct MemoryMap *from_elf(char *elf) {
     struct MemoryMap *res = new_kernel_memory_map();
     struct ElfHeader *e_header = (struct ElfHeader *)elf;
     // 校验 ELF 头
-    if (e_header->magic != ELF_MAGIC) {
+    if (!(e_header->e_ident[0] == 0x7f && e_header->e_ident[1] == 'E' &&
+          e_header->e_ident[2] == 'L' && e_header->e_ident[3] == 'F')) {
         panic("Unknown file type!");
     }
     struct ProgHeader *p_header =
-        (struct ProgHeader *)((usize)elf + e_header->phoff);
+        (struct ProgHeader *)((usize)elf + e_header->e_phoff);
     // 遍历所有的程序段
-    for (int i = 0; i < e_header->phnum; ++i, ++p_header) {
-        if (p_header->type != ELF_PROG_LOAD) {
+    for (int i = 0; i < e_header->e_phnum; ++i, ++p_header) {
+        if (p_header->p_type != ELF_PROG_LOAD) {
             continue;
         }
-        usize flags = convert_flags(p_header->flags);
-        usize start_va = p_header->vaddr, end_va = start_va + p_header->memsz;
+        usize flags = convert_flags(p_header->p_flags);
+        usize start_va = p_header->p_vaddr,
+              end_va = start_va + p_header->p_memsz;
         if (start_va == end_va) {
             continue;
         }
         struct Segment *segment = new_segment(start_va, end_va, flags, Framed);
-        char *data = (char *)((usize)elf + p_header->off);
-        map_segment(res->root_ppn, segment, data, p_header->memsz);
+        char *data = (char *)((usize)elf + p_header->p_offset);
+        map_segment(res->root_ppn, segment, data, p_header->p_memsz);
         list_add(&segment->list, &res->segment_list);
     }
     return res;

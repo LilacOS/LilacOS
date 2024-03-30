@@ -7,8 +7,8 @@ struct Buddy;
 struct Segment;
 struct MemoryMap;
 struct TrapContext;
-struct TaskContext;
-struct Task;
+struct ProcessContext;
+struct ProcessControlBlock;
 struct Inode;
 enum SegmentType;
 
@@ -61,15 +61,15 @@ void set_timer(usize);
 usize syscall(usize, usize[3]);
 
 /* switch.S */
-void __switch(struct TaskContext *current_task_cx,
-              struct TaskContext *next_task_cx);
+void __switch(struct ProcessContext *current_process_cx,
+              struct ProcessContext *next_process_cx);
 
 /* trap.c */
 void init_trap();
 
-/* task.c */
-void add_task(struct Task *);
-void init_task();
+/* process.c */
+void add_process(struct ProcessControlBlock *);
+void init_process();
 void exit_current();
 int sys_fork();
 int sys_wait();

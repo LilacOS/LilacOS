@@ -1,18 +1,18 @@
 #include "types.h"
 #include "def.h"
 #include "consts.h"
-#include "task.h"
+#include "process.h"
 #include "riscv.h"
 #include "elf.h"
 #include "mapping.h"
 #include "fs.h"
 
 // 当前运行的进程
-struct Task *current = NULL;
+struct ProcessControlBlock *current = NULL;
 // 系统启动进程
-struct Task *idle = NULL;
+struct ProcessControlBlock *idle = NULL;
 // 第一个创建的进程
-struct Task *init = NULL;
+struct ProcessControlBlock *init = NULL;
 
 #define MAX_PID 1024
 static int pids[MAX_PID / 32] = {0};
@@ -52,14 +52,14 @@ void dealloc_pid(int pid) {
 /**
  * 初始化设置进程上下文使其返回 __restore
  *
- * @param task_cx 进程上下文
+ * @param process_cx 进程上下文
  * @param kernel_sp 内核栈栈顶
  */
-void goto_trap_restore(struct TaskContext *task_cx, usize kernel_sp) {
-    task_cx->ra = (usize)__restore;
-    task_cx->sp = kernel_sp;
+void goto_trap_restore(struct ProcessContext *process_cx, usize kernel_sp) {
+    process_cx->ra = (usize)__restore;
+    process_cx->sp = kernel_sp;
     for (int i = 0; i < 12; ++i) {
-        task_cx->s[i] = 0;
+        process_cx->s[i] = 0;
     }
 }
 
@@ -93,14 +93,15 @@ void goto_app(struct TrapContext *trap_cx, usize entry, usize user_sp,
 /**
  * 创建新进程
  */
-struct Task *new_task(char *elf) {
-    struct Task *res = (struct Task *)alloc(sizeof(struct Task));
+struct ProcessControlBlock *new_process(char *elf) {
+    struct ProcessControlBlock *res =
+        (struct ProcessControlBlock *)alloc(sizeof(struct ProcessControlBlock));
     res->pid = alloc_pid();
     res->state = Ready;
 
     // 设置根页表地址
     struct MemoryMap *mm = from_elf(elf);
-    res->task_cx.satp = __satp(mm->root_ppn);
+    res->process_cx.satp = __satp(mm->root_ppn);
     res->mm = mm;
     // 分配内核栈，返回内核栈低地址
     res->kstack = (usize)alloc(KERNEL_STACK_SIZE);
@@ -110,8 +111,8 @@ struct Task *new_task(char *elf) {
     map_pages(mm->root_ppn, USER_STACK, __pa(res->ustack), USER_STACK_SIZE,
               PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
 
-    goto_trap_restore(&res->task_cx, res->kstack + KERNEL_STACK_SIZE);
-    goto_app(&res->trap_cx, ((struct ElfHeader *)elf)->entry,
+    goto_trap_restore(&res->process_cx, res->kstack + KERNEL_STACK_SIZE);
+    goto_app(&res->trap_cx, ((struct ElfHeader *)elf)->e_entry,
              USER_STACK + USER_STACK_SIZE, res->kstack + KERNEL_STACK_SIZE);
 
     INIT_LIST_HEAD(&res->list);
@@ -123,21 +124,23 @@ struct Task *new_task(char *elf) {
 /**
  * 添加进程到调度队列队尾中
  */
-void add_task(struct Task *task) { list_add_tail(&task->list, &idle->list); }
+void add_process(struct ProcessControlBlock *process) {
+    list_add_tail(&process->list, &idle->list);
+}
 
 /**
  * 进程调度
  */
 void schedule() {
     while (!list_empty(&idle->list)) {
-        struct Task *task;
-        list_for_each_entry(task, &idle->list, list) {
-            if (task->state == Ready) {
-                list_del(&task->list);
-                task->state = Running;
+        struct ProcessControlBlock *process;
+        list_for_each_entry(process, &idle->list, list) {
+            if (process->state == Ready) {
+                list_del(&process->list);
+                process->state = Running;
                 idle->state = Ready;
-                current = task;
-                __switch(&idle->task_cx, &current->task_cx);
+                current = process;
+                __switch(&idle->process_cx, &current->process_cx);
                 current = idle;
                 idle->state = Running;
                 break;
@@ -147,7 +150,8 @@ void schedule() {
 }
 
 int sys_fork() {
-    struct Task *child = (struct Task *)alloc(sizeof(struct Task));
+    struct ProcessControlBlock *child =
+        (struct ProcessControlBlock *)alloc(sizeof(struct ProcessControlBlock));
     child->pid = alloc_pid();
     child->state = Ready;
     child->kstack = (usize)alloc(KERNEL_STACK_SIZE);
@@ -158,10 +162,10 @@ int sys_fork() {
     INIT_LIST_HEAD(&child->sibling);
 
     usize kernel_sp = child->kstack + KERNEL_STACK_SIZE;
-    goto_trap_restore(&child->task_cx, kernel_sp);
+    goto_trap_restore(&child->process_cx, kernel_sp);
     // 复制地址空间
     child->mm = copy_mm(current->mm);
-    child->task_cx.satp = __satp(child->mm->root_ppn);
+    child->process_cx.satp = __satp(child->mm->root_ppn);
     // 将用户栈映射到固定位置
     map_pages(child->mm->root_ppn, USER_STACK, __pa(child->ustack),
               USER_STACK_SIZE, PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
@@ -178,14 +182,14 @@ int sys_fork() {
     child->trap_cx.x[10] = 0;
 
     list_add(&child->sibling, &current->children);
-    add_task(child);
+    add_process(child);
     return child->pid;
 }
 
 int sys_wait() {
     int flag = 0;
     int pid = -1;
-    struct Task *child;
+    struct ProcessControlBlock *child;
     while (1) {
         list_for_each_entry(child, &current->children, sibling) {
             if (child->state == Exited) { // 将子进程删除
@@ -195,7 +199,7 @@ int sys_wait() {
                 dealloc_pid(child->pid);
                 dealloc((void *)child->kstack, KERNEL_STACK_SIZE);
                 dealloc_memory_map(child->mm);
-                dealloc((void *)child, sizeof(struct Task));
+                dealloc((void *)child, sizeof(struct ProcessControlBlock));
                 return pid;
             } else {
                 flag = 1;
@@ -203,8 +207,8 @@ int sys_wait() {
         }
         if (flag) { // 有子进程还没退出，挂起当前进程等待
             current->state = Ready;
-            add_task(current);
-            __switch(&current->task_cx, &idle->task_cx);
+            add_process(current);
+            __switch(&current->process_cx, &idle->process_cx);
         } else { // 所有子进程均退出，返回 -1
             break;
         }
@@ -224,7 +228,7 @@ int sys_exec(char *path) {
     struct MemoryMap *old_mm = current->mm;
     current->mm = mm;
     dealloc_memory_map(old_mm);
-    current->task_cx.satp = __satp(mm->root_ppn);
+    current->process_cx.satp = __satp(mm->root_ppn);
 
     // 重新分配映射用户栈
     // 内核栈使用原来的内核栈即可
@@ -234,7 +238,7 @@ int sys_exec(char *path) {
     map_pages(mm->root_ppn, USER_STACK, __pa(current->ustack), USER_STACK_SIZE,
               PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
 
-    goto_app(&current->trap_cx, ((struct ElfHeader *)buf)->entry,
+    goto_app(&current->trap_cx, ((struct ElfHeader *)buf)->e_entry,
              USER_STACK + USER_STACK_SIZE, current->kstack + KERNEL_STACK_SIZE);
 
     dealloc(buf, inode->size);
@@ -253,18 +257,19 @@ void exit_current() {
     // 将进程的所有子进程挂到 init 进程上
     if (current != init && current->parent != init) {
         while (!list_empty(&current->children)) {
-            struct Task *child;
+            struct ProcessControlBlock *child;
             list_for_each_entry(child, &current->children, sibling) {
                 list_del(&child->sibling);
                 list_add(&child->sibling, &init->children);
             }
         }
     }
-    __switch(&current->task_cx, &idle->task_cx);
+    __switch(&current->process_cx, &idle->process_cx);
 }
 
-void init_task() {
-    idle = (struct Task *)alloc(sizeof(struct Task));
+void init_process() {
+    idle =
+        (struct ProcessControlBlock *)alloc(sizeof(struct ProcessControlBlock));
     idle->pid = alloc_pid();
     idle->state = Running;
     INIT_LIST_HEAD(&idle->list);
@@ -277,8 +282,8 @@ void init_task() {
     struct Inode *init_inode = lookup(NULL, "init");
     char *buf = (char *)alloc(init_inode->size);
     readall(init_inode, buf);
-    init = new_task(buf);
-    add_task(init);
+    init = new_process(buf);
+    add_process(init);
     dealloc(buf, init_inode->size);
 
     printf("***** Init Task *****\n");
