@@ -13,7 +13,7 @@ OBJS = 								\
 	$K/buddy_system_allocator.o		\
 	$K/memory.o						\
 	$K/mapping.o					\
-	$K/task.o						\
+	$K/process.o					\
 	$K/syscall.o					\
 	$K/elf.o						\
 	$K/main.o

@@ -51,6 +51,6 @@ void main() {
     init_memory();
     test_alloc();
     init_trap();
-    init_task();
+    init_process();
     shutdown();
 }

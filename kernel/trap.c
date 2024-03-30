@@ -3,9 +3,9 @@
 #include "def.h"
 #include "riscv.h"
 #include "trap.h"
-#include "task.h"
+#include "process.h"
 
-extern struct Task *current, *idle;
+extern struct ProcessControlBlock *current, *idle;
 
 void init_trap() {
     // 设置 stvec 寄存器，设置中断处理函数和处理模式
@@ -32,8 +32,8 @@ void syscall_handle(struct TrapContext *context) {
 void supervisor_timer() {
     set_next_timeout();
     current->state = Ready;
-    add_task(current);
-    __switch(&current->task_cx, &idle->task_cx);
+    add_process(current);
+    __switch(&current->process_cx, &idle->process_cx);
 }
 
 void fault(struct TrapContext *context, usize scause, usize stval) {

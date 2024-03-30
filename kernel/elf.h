@@ -3,36 +3,34 @@
 
 #include "types.h"
 
-// ELF 魔数
-#define ELF_MAGIC 0x464C457FU
+#define EI_NIDENT 16
 
 struct ElfHeader {
-    uint magic;
-    uchar elf[12];
-    ushort type;
-    ushort machine;
-    uint version;
-    uint64 entry;
-    uint64 phoff;
-    uint64 shoff;
-    uint flags;
-    ushort ehsize;
-    ushort phentsize;
-    ushort phnum;
-    ushort shentsize;
-    ushort shnum;
-    ushort shstrndx;
+    uchar e_ident[EI_NIDENT];
+    ushort e_type;
+    ushort e_machine;
+    uint e_version;
+    uint64 e_entry;
+    uint64 e_phoff;
+    uint64 e_shoff;
+    uint e_flags;
+    ushort e_ehsize;
+    ushort e_phentsize;
+    ushort e_phnum;
+    ushort e_shentsize;
+    ushort e_shnum;
+    ushort e_shstrndx;
 };
 
 struct ProgHeader {
-    uint32 type;
-    uint32 flags;
-    uint64 off;
-    uint64 vaddr;
-    uint64 paddr;
-    uint64 filesz;
-    uint64 memsz;
-    uint64 align;
+    uint32 p_type;
+    uint32 p_flags;
+    uint64 p_offset;
+    uint64 p_vaddr;
+    uint64 p_paddr;
+    uint64 p_filesz;
+    uint64 p_memsz;
+    uint64 p_align;
 };
 
 // 程序段头类型

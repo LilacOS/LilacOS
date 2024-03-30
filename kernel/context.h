@@ -19,7 +19,7 @@ struct TrapContext {
 /**
  * 进程上下文
  */
-struct TaskContext {
+struct ProcessContext {
     usize ra;
     usize sp;
     usize s[12];

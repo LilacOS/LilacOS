@@ -1,9 +1,9 @@
 #include "types.h"
 #include "def.h"
 #include "syscall.h"
-#include "task.h"
+#include "process.h"
 
-extern struct Task *current;
+extern struct ProcessControlBlock *current;
 
 usize syscall(usize id, usize args[3]) {
     switch (id) {
