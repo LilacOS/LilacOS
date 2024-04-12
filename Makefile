@@ -55,6 +55,13 @@ asm: Kernel
 qemu: Image
 	$(QEMU) $(QEMUOPTS)
 
+D1: Image
+	xfel version
+	xfel ddr d1
+	xfel write 0x80000000 tool/opensbi-d1.bin
+	xfel write 0x80200000 Image
+	xfel exec 0x80000000
+
 gdbserver: Image
 	$(QEMU) $(QEMUOPTS) -s -S
 
