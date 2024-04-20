@@ -5,10 +5,8 @@
 
 extern struct Task *current;
 
-usize syscall(usize id, usize args[3])
-{
-    switch (id)
-    {
+usize syscall(usize id, usize args[3]) {
+    switch (id) {
     case SYS_exit:
         exit_current();
     case SYS_putchar:

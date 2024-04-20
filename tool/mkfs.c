@@ -21,28 +21,23 @@
 char *Image;
 int unused_blocks = BLOCK_NUM;
 
-static inline void *get_block(int block)
-{
+static inline void *get_block(int block) {
     return (void *)Image + block * BLOCK_SIZE;
 }
 
-static inline struct Inode *get_inode(int idx)
-{
+static inline struct Inode *get_inode(int idx) {
     return (struct Inode *)get_block(idx);
 }
 
 /**
  * 分配空闲块
  */
-int alloc_free_block()
-{
+int alloc_free_block() {
     int *freemap = (int *)get_block(1);
-    for (int i = 0; i < BLOCK_NUM; ++i)
-    {
+    for (int i = 0; i < BLOCK_NUM; ++i) {
         int index = i / 32;
         int offset = i % 32;
-        if ((freemap[index] & (1 << offset)) == 0)
-        { // 该块未被分配，进行分配
+        if ((freemap[index] & (1 << offset)) == 0) { // 该块未被分配，进行分配
             freemap[index] |= (1 << offset);
             --unused_blocks;
             return i;
@@ -54,25 +49,19 @@ int alloc_free_block()
 /**
  * 将磁盘块号填入 inode 节点空闲的位置
  */
-void put_block(int block, struct Inode *inode)
-{
-    for (int i = 0; i < 12; ++i)
-    {
-        if (!inode->direct[i])
-        {
+void put_block(int block, struct Inode *inode) {
+    for (int i = 0; i < 12; ++i) {
+        if (!inode->direct[i]) {
             inode->direct[i] = block;
             return;
         }
     }
-    if (!inode->indirect)
-    {
+    if (!inode->indirect) {
         inode->indirect = alloc_free_block();
     }
     uint32 *indirect = (uint32 *)get_block(inode->indirect);
-    for (int i = 0; i < BLOCK_SIZE / sizeof(uint32); ++i)
-    {
-        if (!indirect[i])
-        {
+    for (int i = 0; i < BLOCK_SIZE / sizeof(uint32); ++i) {
+        if (!indirect[i]) {
             indirect[i] = block;
             return;
         }
@@ -85,15 +74,13 @@ void put_block(int block, struct Inode *inode)
  * @param idx 文件夹 inode 节点号
  * @param path 当前文件夹路径
  */
-void walk(int idx, char *path)
-{
+void walk(int idx, char *path) {
     // 打开当前文件夹
     DIR *dir = opendir(path);
     struct Inode *inode = get_inode(idx);
     // 文件夹下第一个文件为其自己
     inode->direct[0] = idx;
-    if (idx == 2)
-    { // 若为根目录，则无上一级，上一级文件夹也为其自己
+    if (idx == 2) { // 若为根目录，则无上一级，上一级文件夹也为其自己
         inode->direct[1] = idx;
     }
     inode->blocks = 2;
@@ -102,14 +89,11 @@ void walk(int idx, char *path)
     struct dirent *entry;
     int new_idx;
     struct Inode *new_inode;
-    while ((entry = readdir(dir)))
-    {
-        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
-        {
+    while ((entry = readdir(dir))) {
+        if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
             continue;
         }
-        if (entry->d_type == DT_DIR)
-        { // 文件夹处理，递归遍历
+        if (entry->d_type == DT_DIR) { // 文件夹处理，递归遍历
             new_idx = alloc_free_block();
             new_inode = get_inode(new_idx);
             new_inode->size = 0;
@@ -122,9 +106,7 @@ void walk(int idx, char *path)
             char new_path[256];
             sprintf(new_path, "%s/%s", path, entry->d_name);
             walk(new_idx, new_path);
-        }
-        else if (entry->d_type == DT_REG)
-        { // 普通文件处理
+        } else if (entry->d_type == DT_REG) { // 普通文件处理
             new_idx = alloc_free_block();
             new_inode = get_inode(new_idx);
             new_inode->type = TYPE_FILE;
@@ -140,8 +122,7 @@ void walk(int idx, char *path)
             // 复制文件数据
             int size = 0;
             FILE *fp = fopen(new_path, "rb");
-            while (size < buf.st_size)
-            {
+            while (size < buf.st_size) {
                 int block = alloc_free_block();
                 char *data = (char *)get_block(block);
                 int len = MIN(buf.st_size - size, BLOCK_SIZE);
@@ -150,9 +131,7 @@ void walk(int idx, char *path)
                 put_block(block, new_inode);
             }
             fclose(fp);
-        }
-        else
-        {
+        } else {
             continue;
         }
         put_block(new_idx, inode);
@@ -161,14 +140,13 @@ void walk(int idx, char *path)
     closedir(dir);
 }
 
-void main()
-{
+void main() {
     Image = (char *)malloc(IMG_SIZE);
     memset(Image, 0, IMG_SIZE);
 
     // 设置超级块、空闲块位图、根 inode 节点所在磁盘块已被分配
-    if ((alloc_free_block() != 0) || (alloc_free_block() != 1) || (alloc_free_block() != 2))
-    {
+    if ((alloc_free_block() != 0) || (alloc_free_block() != 1) ||
+        (alloc_free_block() != 2)) {
         printf("Error!");
         exit(1);
     }

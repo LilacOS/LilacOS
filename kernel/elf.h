@@ -6,35 +6,33 @@
 // ELF 魔数
 #define ELF_MAGIC 0x464C457FU
 
-struct ElfHeader
-{
-	uint magic;
-	uchar elf[12];
-	ushort type;
-	ushort machine;
-	uint version;
-	uint64 entry;
-	uint64 phoff;
-	uint64 shoff;
-	uint flags;
-	ushort ehsize;
-	ushort phentsize;
-	ushort phnum;
-	ushort shentsize;
-	ushort shnum;
-	ushort shstrndx;
+struct ElfHeader {
+    uint magic;
+    uchar elf[12];
+    ushort type;
+    ushort machine;
+    uint version;
+    uint64 entry;
+    uint64 phoff;
+    uint64 shoff;
+    uint flags;
+    ushort ehsize;
+    ushort phentsize;
+    ushort phnum;
+    ushort shentsize;
+    ushort shnum;
+    ushort shstrndx;
 };
 
-struct ProgHeader
-{
-	uint32 type;
-	uint32 flags;
-	uint64 off;
-	uint64 vaddr;
-	uint64 paddr;
-	uint64 filesz;
-	uint64 memsz;
-	uint64 align;
+struct ProgHeader {
+    uint32 type;
+    uint32 flags;
+    uint64 off;
+    uint64 vaddr;
+    uint64 paddr;
+    uint64 filesz;
+    uint64 memsz;
+    uint64 align;
 };
 
 // 程序段头类型

@@ -3,12 +3,10 @@
 /**
  * 计算字符串 str 的长度，不包括结尾的 '\0'
  */
-size_t strlen(const char *str)
-{
+size_t strlen(const char *str) {
 
     size_t len = 0;
-    while (str[len] != '\0')
-    {
+    while (str[len] != '\0') {
         ++len;
     }
     return len;
@@ -20,8 +18,7 @@ size_t strlen(const char *str)
  * 若 str1 字典序比 str2 大，返回 1
  * 若 str1 与 str2 相等，返回 0
  */
-int strcmp(char *str1, char *str2)
-{
+int strcmp(char *str1, char *str2) {
     while (*str1 != '\0' && *str2 != '\0') {
         if (*str1 < *str2) {
             return -1;

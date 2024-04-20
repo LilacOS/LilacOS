@@ -9,16 +9,14 @@
 #define TYPE_FILE 0
 #define TYPE_DIR 1
 
-struct SuperBlock
-{
+struct SuperBlock {
     uint32 magic;          // 魔数
     uint32 blocks;         // 总磁盘块数
     uint32 unused_blocks;  // 未使用的磁盘块数
     uint32 freemap_blocks; // 空闲位图所占块数
 };
 
-struct Inode
-{
+struct Inode {
     uint32 size;        // 文件大小，type 为文件夹时该字段为 0
     uint32 type;        // 文件类型
     uint8 filename[32]; // 文件名称
