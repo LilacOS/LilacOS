@@ -3,8 +3,11 @@
 #include "consts.h"
 
 inline void *wrap_alloc(usize size) {
+    extern uint64 next_power_of_two(uint64);
+    uint64 adjust_size = size <= 8 ? 8 : next_power_of_two(size);
     void *tmp = alloc(size);
-    printf("%p\n", tmp);
+    printf("request %dB, actually alloc 0x%xB, start address: %p\n", size,
+           adjust_size, tmp);
     return tmp;
 }
 
