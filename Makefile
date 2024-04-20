@@ -69,4 +69,4 @@ gdbserver: Image
 	$(QEMU) $(QEMUOPTS) -s -S
 
 gdbclient:
-	$(TOOLPREFIX)gdb -ex 'file $K/Kernel' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+	gdb-multiarch -ex 'file $K/Kernel' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
