@@ -85,9 +85,9 @@ void map_pages(usize root_ppn, usize start_va, usize start_pa, int size,
     usize vpn, start_ppn = start_pa >> 12;
     list_for_va_range(vpn, start_va, start_va + size) {
         PageTableEntry *entry = find_entry(root_ppn, vpn, 1);
-        #ifdef D1
-            flags |= PAGE_ACCESS | PAGE_DIRTY;
-        #endif
+#ifdef D1
+        flags |= PAGE_ACCESS | PAGE_DIRTY;
+#endif
         *entry = PPN2PTE(start_ppn++, flags);
     }
 }
@@ -109,9 +109,9 @@ void map_segment(usize root_ppn, struct Segment *segment, char *data,
             panic("[map_segment] Virtual address already mapped!\n");
         }
         usize ppn = segment->type == Linear ? __ppn(vpn) : alloc_frame();
-        #ifdef D1
-            segment->flags |= PAGE_ACCESS | PAGE_DIRTY;
-        #endif
+#ifdef D1
+        segment->flags |= PAGE_ACCESS | PAGE_DIRTY;
+#endif
         *entry = PPN2PTE(ppn, segment->flags);
         if (data) { // 复制数据到目标位置
             char *dst = (char *)__va(ppn << 12);

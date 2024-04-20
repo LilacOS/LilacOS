@@ -197,6 +197,7 @@ int sys_wait() {
                 // 回收进程的其余资源
                 pid = child->pid;
                 dealloc_pid(child->pid);
+                dealloc((void *)child->ustack, USER_STACK_SIZE);
                 dealloc((void *)child->kstack, KERNEL_STACK_SIZE);
                 dealloc_memory_map(child->mm);
                 dealloc((void *)child, sizeof(struct ProcessControlBlock));
@@ -247,15 +248,12 @@ int sys_exec(char *path) {
 
 /**
  * 终止当前进程运行
- *
- * 只释放部分资源，剩余的资源将由 wait 系统调用回收
  */
 void exit_current() {
-    dealloc((void *)current->ustack, USER_STACK_SIZE);
     current->state = Exited;
     // 进程调度的时候已经将其从调度队列移除，不用再次移除
     // 将进程的所有子进程挂到 init 进程上
-    if (current != init && current->parent != init) {
+    if (current != init) {
         while (!list_empty(&current->children)) {
             struct ProcessControlBlock *child;
             list_for_each_entry(child, &current->children, sibling) {
