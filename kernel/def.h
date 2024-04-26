@@ -29,6 +29,8 @@ int readall(struct Inode *, char *);
 void dealloc_files(struct File **);
 int sys_open(char *, int);
 int sys_close(int);
+int sys_read(int, char *, int);
+int sys_write(int, char *, int);
 
 /* kerneltrap.S */
 void __trap_entry();

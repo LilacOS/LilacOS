@@ -80,15 +80,17 @@ struct Inode *lookup(char *name) {
 }
 
 /**
- * 将文件的数据读取到 buf 中
+ * 从文件读取至多 count 字节数据到 buf 中
+ *
+ * @return 最终读取的字节数量
  */
-int readall(struct Inode *inode, char *buf) {
+int read_from_inode(struct Inode *inode, char *buf, int count) {
     int size = 0;
     uint32 *indirect = (uint32 *)get_block(inode->indirect);
-    for (int i = 0; size < inode->size; ++i) {
+    for (int i = 0; size < count; ++i) {
         char *src = i < 12 ? (char *)get_block(inode->direct[i])
                            : (char *)get_block(indirect[i - 12]);
-        int len = MIN(inode->size - size, BLOCK_SIZE);
+        int len = MIN(count - size, BLOCK_SIZE);
         for (int j = 0; j < len; ++j) {
             buf[j] = src[j];
         }
@@ -99,12 +101,20 @@ int readall(struct Inode *inode, char *buf) {
 }
 
 /**
+ * 将文件的全部数据读取到 buf 中
+ */
+int readall(struct Inode *inode, char *buf) {
+    return read_from_inode(inode, buf, inode->size);
+}
+
+/**
  * 创建普通文件
  */
 struct Inode *create(char *name) {
-    int block = alloc_free_block();
-    struct Inode *inode = get_inode(block);
+    int idx = alloc_inode();
+    struct Inode *inode = get_inode(idx);
     inode->size = inode->blocks = 0;
+    strcpy((char *)(inode->filename), name);
     for (int i = 0; i < 12; ++i) {
         inode->direct[i] = 0;
     }
@@ -134,7 +144,6 @@ int sys_close(int fd) {
     if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
         struct File *file = current->files[fd];
         if (!--(file->count)) {
-            dealloc((void *)file->inode, sizeof(struct Inode));
             dealloc((void *)file, sizeof(struct File));
         }
         current->files[fd] = NULL;
@@ -143,19 +152,37 @@ int sys_close(int fd) {
 }
 
 int sys_read(int fd, char *buf, int count) {
-    int res = 0;
     if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
+        struct File *file = current->files[fd];
+        return read_from_inode(file->inode, buf, count);
     }
-    return res;
+    return -1;
 }
 
-int sys_write() { return 0; }
+int sys_write(int fd, char *buf, int count) {
+    if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
+        struct File *file = current->files[fd];
+        int size = 0;
+        uint32 *indirect = (uint32 *)get_block(file->inode->indirect);
+        for (int i = 0; size < count; ++i) {
+            char *src = i < 12 ? (char *)get_block(file->inode->direct[i])
+                               : (char *)get_block(indirect[i - 12]);
+            int len = MIN(count - size, BLOCK_SIZE);
+            for (int j = 0; j < len; ++j) {
+                buf[j] = src[j];
+            }
+            buf += len;
+            size += len;
+        }
+        return size;
+    }
+    return -1;
+}
 
 void dealloc_files(struct File **files) {
     for (int i = 0; i < NR_OPEN; ++i) {
         if (files[i]) {
             if (!--(files[i]->count)) {
-                dealloc((void *)files[i]->inode, sizeof(struct Inode));
                 dealloc((void *)files[i], sizeof(struct File));
             }
             files[i] = NULL;

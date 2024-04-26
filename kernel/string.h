@@ -38,3 +38,15 @@ int strcmp(char *str1, char *str2) {
         return 1; // str2 较短
     }
 }
+
+/**
+ * 复制字符串，会在结尾添加 '\0'
+ */
+void strcpy(char *dest, const char *src) {
+    while (*src) {
+        *dest = *src;
+        src++;
+        dest++;
+    }
+    *dest = '\0'; // 添加字符串结束符
+}

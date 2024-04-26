@@ -10,9 +10,9 @@
 #define O_CREATE 0x200
 
 struct SuperBlock {
-    uint32 magic;          // 魔数
-    uint16 blocks;         // 总磁盘块数
-    uint16 unused_blocks;  // 未使用的磁盘块数
+    uint32 magic;         // 魔数
+    uint16 blocks;        // 总磁盘块数
+    uint16 unused_blocks; // 未使用的磁盘块数
 };
 
 struct Inode {
