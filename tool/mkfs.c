@@ -9,7 +9,7 @@
 /* 该程序用于将 rootfs 打包成一个 SimpleFS 镜像文件 */
 // ---------------------------------------------------
 // |            |         |            |             |
-// | superblock | freemap | root inode | other block |
+// | superblock | freemap |    FAT     | other block |
 // |            |         |            |             |
 // ---------------------------------------------------
 
@@ -36,10 +36,30 @@ int alloc_free_block() {
     for (int i = 0; i < BLOCK_NUM; ++i) {
         int index = i / 32;
         int offset = i % 32;
-        if ((freemap[index] & (1 << offset)) == 0) { // 该块未被分配，进行分配
+        if ((freemap[index] & (1 << offset)) == 0) {
+            // 该块未被分配，进行分配
             freemap[index] |= (1 << offset);
             --unused_blocks;
             return i;
+        }
+    }
+    return -1;
+}
+
+/**
+ * 分配 inode 节点并填充 FAT 表
+ *
+ * @return -1 分配失败
+ */
+int alloc_inode() {
+    uint16 *fat = (uint16 *)get_block(2);
+    for (int i = 0; i < BLOCK_SIZE / sizeof(uint16); ++i) {
+        if (!fat[i]) {
+            int inode = alloc_free_block();
+            if (inode != -1) {
+                fat[i] = inode;
+            }
+            return inode;
         }
     }
     return -1;
@@ -68,21 +88,13 @@ void put_block(int block, struct Inode *inode) {
 }
 
 /**
- * 递归遍历文件夹，并填充文件夹 inode 节点
+ * 遍历文件夹，填充文件 inode 节点表
  *
- * @param idx 文件夹 inode 节点号
  * @param path 当前文件夹路径
  */
-void walk(int idx, char *path) {
+void walk(char *path) {
     // 打开当前文件夹
     DIR *dir = opendir(path);
-    struct Inode *inode = get_inode(idx);
-    // 文件夹下第一个文件为其自己
-    inode->direct[0] = idx;
-    if (idx == 2) { // 若为根目录，则无上一级，上一级文件夹也为其自己
-        inode->direct[1] = idx;
-    }
-    inode->blocks = 2;
 
     // 遍历当前文件夹下所有文件
     struct dirent *entry;
@@ -92,23 +104,10 @@ void walk(int idx, char *path) {
         if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
             continue;
         }
-        if (entry->d_type == DT_DIR) { // 文件夹处理，递归遍历
-            new_idx = alloc_free_block();
+        if (entry->d_type == DT_REG) {
+            // 普通文件处理
+            new_idx = alloc_inode();
             new_inode = get_inode(new_idx);
-            new_inode->size = 0;
-            new_inode->type = TYPE_DIR;
-            strcpy(new_inode->filename, entry->d_name);
-            // 前两个文件分别为 . 和 ..
-            new_inode->direct[0] = new_idx;
-            new_inode->direct[1] = idx;
-
-            char new_path[256];
-            sprintf(new_path, "%s/%s", path, entry->d_name);
-            walk(new_idx, new_path);
-        } else if (entry->d_type == DT_REG) { // 普通文件处理
-            new_idx = alloc_free_block();
-            new_inode = get_inode(new_idx);
-            new_inode->type = TYPE_FILE;
             strcpy(new_inode->filename, entry->d_name);
             // 获取文件信息
             char new_path[256];
@@ -133,8 +132,6 @@ void walk(int idx, char *path) {
         } else {
             continue;
         }
-        put_block(new_idx, inode);
-        ++(inode->blocks);
     }
     closedir(dir);
 }
@@ -143,28 +140,20 @@ void main() {
     Image = (char *)malloc(IMG_SIZE);
     memset(Image, 0, IMG_SIZE);
 
-    // 设置超级块、空闲块位图、根 inode 节点所在磁盘块已被分配
+    // 设置超级块、空闲块位图、FAT 表所在磁盘块已被分配
     if ((alloc_free_block() != 0) || (alloc_free_block() != 1) ||
         (alloc_free_block() != 2)) {
         printf("Error!");
         exit(1);
     }
 
-    // 设置根 inode 节点
-    struct Inode *root = (struct Inode *)get_block(2);
-    root->size = 0;
-    root->type = TYPE_DIR;
-    root->filename[0] = '/';
-    root->filename[1] = '\0';
-
-    // 递归遍历根文件夹，并设置和填充数据
-    walk(2, "rootfs");
+    // 遍历根目录，并设置和填充数据
+    walk("rootfs");
 
     // 填充超级块信息
     struct SuperBlock *sb = (struct SuperBlock *)get_block(0);
     sb->magic = MAGIC_NUM;
     sb->blocks = BLOCK_NUM;
-    sb->freemap_blocks = 1;
     sb->unused_blocks = unused_blocks;
 
     // 将 Image 写到磁盘上

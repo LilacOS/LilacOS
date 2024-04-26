@@ -8,15 +8,19 @@
 
 extern struct ProcessControlBlock *current;
 
-struct Inode *ROOT_INODE;
-
 static inline void *get_block(int block) {
     extern void _fs_img_start();
     return (void *)_fs_img_start + (block * BLOCK_SIZE);
 }
 
+static inline struct Inode *get_inode(int idx) {
+    return (struct Inode *)get_block(idx);
+}
+
 /**
  * 分配空闲块
+ *
+ * @return -1 分配失败
  */
 int alloc_free_block() {
     struct SuperBlock *sb = get_block(0);
@@ -35,58 +39,41 @@ int alloc_free_block() {
             return i;
         }
     }
-}
-
-void init_fs() {
-    struct SuperBlock *sb = get_block(0);
-    ROOT_INODE = (struct Inode *)get_block(1 + sb->freemap_blocks);
-    printf("***** Init FS *****\n");
+    return -1;
 }
 
 /**
- * 在当前目录下查找文件
+ * 分配 inode 节点并填充 FAT 表
  *
- * - 若 path 为相对路径且 inode 不为空，则以 inode 为当前目录查找
- * - 若 path 为相对路径且 inode 为空，则以根目录为当前目录查找
- * - 若 path 为绝对路径，则忽略 inode
+ * @return -1 分配失败
  */
-struct Inode *lookup(struct Inode *inode, char *path) {
-    if (path[0] == '\0')
-        return inode;
-    if (path[0] == '/') {
-        inode = ROOT_INODE;
-        ++path;
+int alloc_inode() {
+    uint16 *fat = (uint16 *)get_block(2);
+    for (int i = 0; i < BLOCK_SIZE / sizeof(uint16); ++i) {
+        if (!fat[i]) {
+            int inode = alloc_free_block();
+            if (inode != -1) {
+                fat[i] = inode;
+            }
+            return inode;
+        }
     }
-    if (!inode)
-        inode = ROOT_INODE;
-    if (inode->type != TYPE_DIR)
-        return NULL;
+    return -1;
+}
 
-    // 解析第一个文件名
-    char name[strlen(path) + 1];
-    int i = 0;
-    for (; *path != '/' && *path != '\0'; ++path, ++i) {
-        name[i] = *path;
-    }
-    name[i] = '\0';
-    if (*path == '/')
-        ++path;
+void init_fs() { printf("***** Init FS *****\n"); }
 
-    if (!strcmp(".", name)) {
-        return lookup(inode, path);
-    }
-    if (!strcmp("..", name)) {
-        struct Inode *parent = (struct Inode *)get_block(inode->direct[1]);
-        return lookup(parent, path);
-    }
-
-    uint32 *indirect = (uint32 *)get_block(inode->indirect);
-    for (int i = 2; i < inode->blocks; ++i) {
-        struct Inode *tmp = i < 12
-                                ? (struct Inode *)get_block(inode->direct[i])
-                                : (struct Inode *)get_block(indirect[i - 12]);
-        if (!strcmp((char *)tmp->filename, name)) {
-            return lookup(tmp, path);
+/**
+ * 查找文件
+ */
+struct Inode *lookup(char *name) {
+    uint16 *fat = (uint16 *)get_block(2);
+    for (int i = 0; i < BLOCK_SIZE / sizeof(uint16); ++i) {
+        if (fat[i]) {
+            struct Inode *inode = get_inode(fat[i]);
+            if (!strcmp((char *)(inode->filename), name)) {
+                return inode;
+            }
         }
     }
     return NULL;
@@ -96,10 +83,6 @@ struct Inode *lookup(struct Inode *inode, char *path) {
  * 将文件的数据读取到 buf 中
  */
 int readall(struct Inode *inode, char *buf) {
-    if (inode->type != TYPE_FILE) {
-        panic("Cannot read a directory!\n");
-    }
-
     int size = 0;
     uint32 *indirect = (uint32 *)get_block(inode->indirect);
     for (int i = 0; size < inode->size; ++i) {
@@ -115,51 +98,26 @@ int readall(struct Inode *inode, char *buf) {
     return size;
 }
 
-struct Inode *get_dir(char *path) { return NULL; }
-
 /**
  * 创建普通文件
-*/
-struct Inode *create(char *path) {
-    struct Inode *dir = get_dir(path);
-    if (dir->blocks == 12 + BLOCK_SIZE / sizeof(uint32)) {
-        // 目录文件夹容量已满
-        return NULL;
-    }
-
-    // 分配普通文件 inode 节点
+ */
+struct Inode *create(char *name) {
     int block = alloc_free_block();
-    struct Inode *inode = (struct Inode *)get_block(block);
+    struct Inode *inode = get_inode(block);
     inode->size = inode->blocks = 0;
-    inode->type = TYPE_FILE;
     for (int i = 0; i < 12; ++i) {
         inode->direct[i] = 0;
     }
     inode->indirect = 0;
-
-    for (int i = 2; i < 12 && i < dir->blocks; ++i) {
-        if (!(dir->direct[i])) {
-            dir->direct[i] = block;
-            break;
-        }
-    }
-    uint32 *indirect = (uint32 *)get_block(dir->indirect);
-    for (int i = 0; i + 12 < dir->blocks; ++i) {
-        if (!(indirect[i])) {
-            indirect[i] = block;
-            break;
-        }
-    }
-
     return inode;
 }
 
-int sys_open(char *path, int flags) {
+int sys_open(char *name, int flags) {
     for (int i = 0; i < NR_OPEN; ++i) {
         if (!(current->files[i])) {
-            struct Inode *inode = lookup(NULL, path);
+            struct Inode *inode = lookup(name);
             if (!inode && (flags & O_CREATE)) {
-                inode = create(path);
+                inode = create(name);
             }
             struct File *file = (struct File *)alloc(sizeof(struct File));
             file->count = 1;

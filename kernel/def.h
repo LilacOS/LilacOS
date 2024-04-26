@@ -24,7 +24,7 @@ struct MemoryMap *from_elf(char *);
 
 /* fs.c */
 void init_fs();
-struct Inode *lookup(struct Inode *, char *);
+struct Inode *lookup(char *);
 int readall(struct Inode *, char *);
 void dealloc_files(struct File **);
 int sys_open(char *, int);

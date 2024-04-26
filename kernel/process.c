@@ -230,8 +230,8 @@ int sys_wait() {
     return -1;
 }
 
-int sys_exec(char *path) {
-    struct Inode *inode = lookup(NULL, path);
+int sys_exec(char *name) {
+    struct Inode *inode = lookup(name);
     char *buf = (char *)alloc(inode->size);
     readall(inode, buf);
     struct MemoryMap *mm = from_elf(buf);
@@ -293,7 +293,7 @@ void init_process() {
     idle->mm = remap_kernel();
 
     // 从文件系统中读取 elf 文件
-    struct Inode *init_inode = lookup(NULL, "init");
+    struct Inode *init_inode = lookup("init\0");
     char *buf = (char *)alloc(init_inode->size);
     readall(init_inode, buf);
     init = new_process(buf);
