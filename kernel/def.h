@@ -10,6 +10,7 @@ struct TrapContext;
 struct ProcessContext;
 struct ProcessControlBlock;
 struct Inode;
+struct File;
 enum SegmentType;
 
 /* buddy_system_allocator.c */
@@ -25,6 +26,9 @@ struct MemoryMap *from_elf(char *);
 void init_fs();
 struct Inode *lookup(struct Inode *, char *);
 int readall(struct Inode *, char *);
+void dealloc_files(struct File **);
+int sys_open(char *, int);
+int sys_close(int);
 
 /* kerneltrap.S */
 void __trap_entry();

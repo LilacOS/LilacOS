@@ -118,6 +118,10 @@ struct ProcessControlBlock *new_process(char *elf) {
     INIT_LIST_HEAD(&res->list);
     INIT_LIST_HEAD(&res->children);
     INIT_LIST_HEAD(&res->sibling);
+
+    for (int i = 0; i < NR_OPEN; ++i) {
+        res->files[i] = NULL;
+    }
     return res;
 }
 
@@ -181,6 +185,14 @@ int sys_fork() {
     // 子进程返回 0
     child->trap_cx.x[10] = 0;
 
+    // 复制打开文件表
+    for (int i = 0; i < NR_OPEN; ++i) {
+        child->files[i] = current->files[i];
+        if (child->files[i]) {
+            ++(child->files[i]->count);
+        }
+    }
+
     list_add(&child->sibling, &current->children);
     add_process(child);
     return child->pid;
@@ -194,9 +206,10 @@ int sys_wait() {
         list_for_each_entry(child, &current->children, sibling) {
             if (child->state == Exited) { // 将子进程删除
                 list_del(&child->sibling);
-                // 回收进程的其余资源
+                // 回收进程资源
                 pid = child->pid;
                 dealloc_pid(child->pid);
+                dealloc_files(child->files);
                 dealloc((void *)child->ustack, USER_STACK_SIZE);
                 dealloc((void *)child->kstack, KERNEL_STACK_SIZE);
                 dealloc_memory_map(child->mm);
@@ -238,6 +251,9 @@ int sys_exec(char *path) {
     // 将用户栈映射到固定位置
     map_pages(mm->root_ppn, USER_STACK, __pa(current->ustack), USER_STACK_SIZE,
               PAGE_VALID | PAGE_USER | PAGE_READ | PAGE_WRITE);
+
+    // 打开文件表取消共享
+    dealloc_files(current->files);
 
     goto_app(&current->trap_cx, ((struct ElfHeader *)buf)->e_entry,
              USER_STACK + USER_STACK_SIZE, current->kstack + KERNEL_STACK_SIZE);

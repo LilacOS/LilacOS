@@ -2,14 +2,39 @@
 #include "def.h"
 #include "fs.h"
 #include "string.h"
+#include "process.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+extern struct ProcessControlBlock *current;
 
 struct Inode *ROOT_INODE;
 
 static inline void *get_block(int block) {
     extern void _fs_img_start();
     return (void *)_fs_img_start + (block * BLOCK_SIZE);
+}
+
+/**
+ * 分配空闲块
+ */
+int alloc_free_block() {
+    struct SuperBlock *sb = get_block(0);
+    if (sb->unused_blocks) {
+        --(sb->unused_blocks);
+    } else {
+        return -1;
+    }
+    int *freemap = (int *)get_block(1);
+    for (int i = 0; i < BLOCK_NUM; ++i) {
+        int index = i / 32;
+        int offset = i % 32;
+        if ((freemap[index] & (1 << offset)) == 0) {
+            // 该块未被分配，进行分配
+            freemap[index] |= (1 << offset);
+            return i;
+        }
+    }
 }
 
 void init_fs() {
@@ -68,7 +93,7 @@ struct Inode *lookup(struct Inode *inode, char *path) {
 }
 
 /**
- * 将文件 inode 的数据读取到 buf 中
+ * 将文件的数据读取到 buf 中
  */
 int readall(struct Inode *inode, char *buf) {
     if (inode->type != TYPE_FILE) {
@@ -88,4 +113,94 @@ int readall(struct Inode *inode, char *buf) {
         size += len;
     }
     return size;
+}
+
+struct Inode *get_dir(char *path) { return NULL; }
+
+/**
+ * 创建普通文件
+*/
+struct Inode *create(char *path) {
+    struct Inode *dir = get_dir(path);
+    if (dir->blocks == 12 + BLOCK_SIZE / sizeof(uint32)) {
+        // 目录文件夹容量已满
+        return NULL;
+    }
+
+    // 分配普通文件 inode 节点
+    int block = alloc_free_block();
+    struct Inode *inode = (struct Inode *)get_block(block);
+    inode->size = inode->blocks = 0;
+    inode->type = TYPE_FILE;
+    for (int i = 0; i < 12; ++i) {
+        inode->direct[i] = 0;
+    }
+    inode->indirect = 0;
+
+    for (int i = 2; i < 12 && i < dir->blocks; ++i) {
+        if (!(dir->direct[i])) {
+            dir->direct[i] = block;
+            break;
+        }
+    }
+    uint32 *indirect = (uint32 *)get_block(dir->indirect);
+    for (int i = 0; i + 12 < dir->blocks; ++i) {
+        if (!(indirect[i])) {
+            indirect[i] = block;
+            break;
+        }
+    }
+
+    return inode;
+}
+
+int sys_open(char *path, int flags) {
+    for (int i = 0; i < NR_OPEN; ++i) {
+        if (!(current->files[i])) {
+            struct Inode *inode = lookup(NULL, path);
+            if (!inode && (flags & O_CREATE)) {
+                inode = create(path);
+            }
+            struct File *file = (struct File *)alloc(sizeof(struct File));
+            file->count = 1;
+            file->off = 0;
+            file->inode = inode;
+            current->files[i] = file;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int sys_close(int fd) {
+    if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
+        struct File *file = current->files[fd];
+        if (!--(file->count)) {
+            dealloc((void *)file->inode, sizeof(struct Inode));
+            dealloc((void *)file, sizeof(struct File));
+        }
+        current->files[fd] = NULL;
+    }
+    return 0;
+}
+
+int sys_read(int fd, char *buf, int count) {
+    int res = 0;
+    if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
+    }
+    return res;
+}
+
+int sys_write() { return 0; }
+
+void dealloc_files(struct File **files) {
+    for (int i = 0; i < NR_OPEN; ++i) {
+        if (files[i]) {
+            if (!--(files[i]->count)) {
+                dealloc((void *)files[i]->inode, sizeof(struct Inode));
+                dealloc((void *)files[i], sizeof(struct File));
+            }
+            files[i] = NULL;
+        }
+    }
 }

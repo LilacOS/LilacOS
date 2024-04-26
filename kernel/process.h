@@ -5,6 +5,8 @@
 #include "list.h"
 #include "context.h"
 
+#define NR_OPEN 16
+
 enum ProcState {
     Ready,
     Running,
@@ -33,6 +35,7 @@ struct ProcessControlBlock {
     struct list_head children;
     // 兄弟节点链表
     struct list_head sibling;
+    struct File *files[NR_OPEN];
 };
 
 #endif

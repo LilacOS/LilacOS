@@ -20,6 +20,12 @@ usize syscall(usize id, usize args[3]) {
         return sys_wait();
     case SYS_exec:
         return sys_exec((char *)args[0]);
+    case SYS_open:
+        return sys_open((char *)args[0], args[1]);
+    case SYS_close:
+        return sys_close(args[0]);
+    case SYS_read:
+    case SYS_write:
     default:
         panic("[syscall] Unknown syscall id %d\n", id);
     }

@@ -4,10 +4,13 @@
 #include "types.h"
 
 #define BLOCK_SIZE 512
+#define BLOCK_NUM 2048
 #define MAGIC_NUM 0x4D534653U // MSFS
 
 #define TYPE_FILE 0
 #define TYPE_DIR 1
+
+#define O_CREATE 0x200
 
 struct SuperBlock {
     uint32 magic;          // 魔数
@@ -23,6 +26,12 @@ struct Inode {
     uint32 blocks;      // 占据磁盘块个数
     uint32 direct[12];  // 直接磁盘块
     uint32 indirect;    // 间接磁盘块
+};
+
+struct File {
+    int count;
+    int off;
+    struct Inode *inode;
 };
 
 #endif

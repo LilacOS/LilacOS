@@ -14,7 +14,6 @@
 // ---------------------------------------------------
 
 // 总块数 2048 块，大小为 1M
-#define BLOCK_NUM 2048
 #define IMG_SIZE (BLOCK_SIZE * BLOCK_NUM)
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
