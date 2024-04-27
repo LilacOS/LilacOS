@@ -26,7 +26,8 @@ UPROSBASE =					\
 
 UPROS = 			\
 	init			\
-	hello
+	hello			\
+	filetest
 
 # 设置交叉编译工具链
 TOOLPREFIX := riscv64-unknown-elf-

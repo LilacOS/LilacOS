@@ -24,4 +24,18 @@ int fork() { return sys_call(SYS_fork, 0, 0, 0); }
 
 int wait() { return sys_call(SYS_wait, 0, 0, 0); }
 
-int exec(char *path) { return sys_call(SYS_exec, (usize)path, 0, 0); }
+int exec(char *name) { return sys_call(SYS_exec, (usize)name, 0, 0); }
+
+int open(char *name, int flags) {
+    return sys_call(SYS_open, (usize)name, flags, 0);
+}
+
+int close(int fd) { return sys_call(SYS_close, fd, 0, 0); }
+
+int read(int fd, char *buf, int count) {
+    return sys_call(SYS_read, fd, (usize)buf, count);
+}
+
+int write(int fd, char *buf, int count) {
+    return sys_call(SYS_write, fd, (usize)buf, count);
+}

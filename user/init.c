@@ -3,6 +3,16 @@
 
 int main() {
     int pid;
+
+    // 简单测试文件系统功能
+    pid = fork();
+    if (!pid) {
+        exec("filetest\0");
+    } else {
+        pid = wait();
+        printf("Child %d terminated!\n", pid);
+    }
+
     for (int i = 0; i < 5; ++i) {
         pid = fork();
         if (!pid) {

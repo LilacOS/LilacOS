@@ -12,5 +12,9 @@ int getpid();
 int fork();
 int wait();
 int exec(char *);
+int open(char *, int);
+int close(int);
+int read(int, char *, int);
+int write(int, char *, int);
 
 #endif
