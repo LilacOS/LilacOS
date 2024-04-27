@@ -16,5 +16,6 @@ int open(char *, int);
 int close(int);
 int read(int, char *, int);
 int write(int, char *, int);
+char getchar();
 
 #endif

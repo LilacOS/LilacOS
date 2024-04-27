@@ -8,6 +8,8 @@
 
 extern struct ProcessControlBlock *current;
 
+static struct Inode ROOT_INODE;
+
 static inline void *get_block(int block) {
     extern void _fs_img_start();
     return (void *)_fs_img_start + (block * BLOCK_SIZE);
@@ -135,9 +137,19 @@ struct Inode *create(char *name) {
 int sys_open(char *name, int flags) {
     for (int i = 0; i < NR_OPEN; ++i) {
         if (!(current->files[i])) {
-            struct Inode *inode = lookup(name);
-            if (!inode && (flags & O_CREATE)) {
-                inode = create(name);
+            struct Inode *inode;
+            if (!strcmp("/\0", name)) {
+                // 根目录使用虚拟 inode 节点
+                inode = &ROOT_INODE;
+            } else {
+                inode = lookup(name);
+                if (!inode) {
+                    if ((flags & O_CREATE)) {
+                        inode = create(name);
+                    } else {
+                        return -1;
+                    }
+                }
             }
             struct File *file = (struct File *)alloc(sizeof(struct File));
             file->count = 1;
@@ -167,8 +179,30 @@ int sys_read(int fd, char *buf, int count) {
     }
     if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
         struct File *file = current->files[fd];
+        // 读取根目录
+        if (file->inode == &ROOT_INODE) {
+            int num = sizeof(struct Inode);
+            if (count < num) {
+                printf("[sys_read] cannt read a file inode!");
+                return -1;
+            }
+            int idx = file->off / num;
+            uint16 *fat = (uint16 *)get_block(2);
+            for (int i = idx; i < BLOCK_SIZE / sizeof(uint16); ++i) {
+                if (fat[i]) {
+                    char *inode = (char *)get_inode(fat[i]);
+                    for (int i = 0; i < num; ++i) {
+                        buf[i] = inode[i];
+                    }
+                    file->off += num;
+                    return num;
+                }
+            }
+            return 0;
+        }
+
+        // 标准输入
         if (file->type == FILE_STDIO) {
-            // 标准输入
             while (1) {
                 char c = console_getchar();
                 if (c == (char)-1) {
@@ -179,6 +213,7 @@ int sys_read(int fd, char *buf, int count) {
                 }
             }
         }
+
         // 文件输入
         int num = read_from_inode(file->inode, file->off, buf, count);
         file->off += num;

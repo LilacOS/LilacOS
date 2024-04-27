@@ -7,7 +7,7 @@ int main() {
     // 打开文件
     int fd = open("test.txt", O_CREATE);
     if (fd == -1) {
-        printf("create file failed!");
+        printf("create file failed!\n");
         exit();
     }
     printf("open file, fd = %d\n", fd);
@@ -15,7 +15,7 @@ int main() {
     char *data = "Hello, file system!";
     ssize_t bytes_written = write(fd, data, strlen(data));
     if (bytes_written == -1) {
-        printf("write data failed!");
+        printf("write data failed!\n");
         exit();
     }
     printf("write data: %d\n", bytes_written);
@@ -24,7 +24,7 @@ int main() {
     // 重新打开文件以读取数据
     fd = open("test.txt", 0);
     if (fd == -1) {
-        printf("open file failed!");
+        printf("open file failed!\n");
         exit();
     }
     printf("open file, fd = %d\n", fd);
@@ -32,7 +32,7 @@ int main() {
     char buffer[100];
     ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
     if (bytes_read == -1) {
-        printf("read data failed!");
+        printf("read data failed!\n");
         exit();
     }
     printf("read data: %d\n", bytes_read);

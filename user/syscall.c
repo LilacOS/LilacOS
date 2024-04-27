@@ -39,3 +39,9 @@ int read(int fd, char *buf, int count) {
 int write(int fd, char *buf, int count) {
     return sys_call(SYS_write, fd, (usize)buf, count);
 }
+
+char getchar() {
+    char c;
+    read(0, &c, 1);
+    return c;
+}

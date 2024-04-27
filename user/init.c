@@ -13,13 +13,9 @@ int main() {
         printf("Child %d terminated!\n", pid);
     }
 
-    for (int i = 0; i < 5; ++i) {
-        pid = fork();
-        if (!pid) {
-            exec("hello\0");
-        } else {
-            printf("Hello world from parent, pid = %d\n", getpid());
-        }
+    pid = fork();
+    if (!pid) {
+        exec("shell\0");
     }
     while ((pid = wait()) != -1) {
         printf("Child %d terminated!\n", pid);
