@@ -33,9 +33,7 @@ void syscall_handle(struct TrapContext *context) {
 
 void supervisor_timer() {
     set_next_timeout();
-    current->state = Ready;
-    add_process(current);
-    __switch(&current->process_cx, &idle->process_cx);
+    yield();
 }
 
 void fault(struct TrapContext *context, usize scause, usize stval) {

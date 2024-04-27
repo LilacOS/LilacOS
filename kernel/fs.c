@@ -162,8 +162,24 @@ int sys_close(int fd) {
 }
 
 int sys_read(int fd, char *buf, int count) {
+    if (!count) {
+        return 0;
+    }
     if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
         struct File *file = current->files[fd];
+        if (file->type == FILE_STDIO) {
+            // 标准输入
+            while (1) {
+                char c = console_getchar();
+                if (c == (char)-1) {
+                    yield();
+                } else {
+                    buf[0] = c;
+                    return 1;
+                }
+            }
+        }
+        // 文件输入
         int num = read_from_inode(file->inode, file->off, buf, count);
         file->off += num;
         return num;
@@ -207,6 +223,16 @@ void increase_size(struct Inode *inode, int new_size) {
 int sys_write(int fd, char *buf, int count) {
     if (fd >= 0 && fd < NR_OPEN && current->files[fd]) {
         struct File *file = current->files[fd];
+
+        if (file->type == FILE_STDIO) {
+            // 标准输出
+            for (int i = 0; i < count; ++i) {
+                console_putchar(buf[i]);
+            }
+            return count;
+        }
+
+        // 文件输出
         struct Inode *inode = file->inode;
         int new_size = file->off + count;
         increase_size(file->inode, new_size);

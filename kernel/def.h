@@ -80,6 +80,7 @@ void exit_current();
 int sys_fork();
 int sys_wait();
 int sys_exec(char *);
+void yield();
 
 /* timer.c */
 void init_timer();

@@ -9,6 +9,9 @@
 
 #define O_CREATE 0x200
 
+#define FILE_INODE 0
+#define FILE_STDIO 1
+
 struct SuperBlock {
     uint32 magic;         // 魔数
     uint16 blocks;        // 总磁盘块数
@@ -24,6 +27,7 @@ struct Inode {
 };
 
 struct File {
+    short type;
     int count;
     int off;
     struct Inode *inode;

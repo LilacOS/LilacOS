@@ -119,7 +119,15 @@ struct ProcessControlBlock *new_process(char *elf) {
     INIT_LIST_HEAD(&res->children);
     INIT_LIST_HEAD(&res->sibling);
 
-    for (int i = 0; i < NR_OPEN; ++i) {
+    // stdin, stdout, stderr
+    for (int i = 0; i < 3; ++i) {
+        struct File *stdio = (struct File *)alloc(sizeof(struct File));
+        stdio->type = FILE_STDIO;
+        stdio->count = 1;
+        stdio->inode = NULL;
+        res->files[i] = stdio;
+    }
+    for (int i = 3; i < NR_OPEN; ++i) {
         res->files[i] = NULL;
     }
     return res;
@@ -151,6 +159,15 @@ void schedule() {
             }
         }
     }
+}
+
+/**
+ * 挂起当前进程，重新调度
+ */
+void yield() {
+    current->state = Ready;
+    add_process(current);
+    __switch(&current->process_cx, &idle->process_cx);
 }
 
 int sys_fork() {
@@ -220,9 +237,7 @@ int sys_wait() {
             }
         }
         if (flag) { // 有子进程还没退出，挂起当前进程等待
-            current->state = Ready;
-            add_process(current);
-            __switch(&current->process_cx, &idle->process_cx);
+            yield();
         } else { // 所有子进程均退出，返回 -1
             break;
         }
@@ -254,6 +269,14 @@ int sys_exec(char *name) {
 
     // 打开文件表取消共享
     dealloc_files(current->files);
+    // stdin, stdout, stderr
+    for (int i = 0; i < 3; ++i) {
+        struct File *stdio = (struct File *)alloc(sizeof(struct File));
+        stdio->type = FILE_STDIO;
+        stdio->count = 1;
+        stdio->inode = NULL;
+        current->files[i] = stdio;
+    }
 
     goto_app(&current->trap_cx, ((struct ElfHeader *)buf)->e_entry,
              USER_STACK + USER_STACK_SIZE, current->kstack + KERNEL_STACK_SIZE);

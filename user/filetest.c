@@ -10,6 +10,7 @@ int main() {
         printf("create file failed!");
         exit();
     }
+    printf("open file, fd = %d\n", fd);
     // 写入数据
     char *data = "Hello, file system!";
     ssize_t bytes_written = write(fd, data, strlen(data));
@@ -26,6 +27,7 @@ int main() {
         printf("open file failed!");
         exit();
     }
+    printf("open file, fd = %d\n", fd);
     // 读取数据
     char buffer[100];
     ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
