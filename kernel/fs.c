@@ -135,9 +135,14 @@ struct Inode *create(char *name) {
 int sys_open(char *name, int flags) {
     for (int i = 0; i < NR_OPEN; ++i) {
         if (!(current->files[i])) {
-            struct Inode *inode = lookup(name);
-            if (!inode && (flags & O_CREATE)) {
-                inode = create(name);
+            struct Inode *inode;
+            inode = lookup(name);
+            if (!inode) {
+                if ((flags & O_CREATE)) {
+                    inode = create(name);
+                } else {
+                    return -1;
+                }
             }
             struct File *file = (struct File *)alloc(sizeof(struct File));
             file->count = 1;
