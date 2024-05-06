@@ -42,12 +42,13 @@ int main() {
             }
             printf("$ ");
             break;
+        case BS:
         case DL:
             if (!is_empty()) {
                 putchar(BS);
                 putchar(' ');
                 putchar(BS);
-                line[len--] = '\0';
+                line[--len] = '\0';
             }
             break;
         default:
