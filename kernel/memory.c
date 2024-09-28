@@ -8,7 +8,7 @@ static struct Buddy allocator;
 void init_allocator() {
     init_buddy(&allocator);
     add_to_buddy(&allocator, (void *)ekernel,
-                 (void *)(MEMORY_END + KERNEL_MAP_OFFSET));
+        (void *)__va(MEMORY_END));
 }
 
 /**
